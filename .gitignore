@@ -1,0 +1,42 @@
+# Claude Code
+.claude/
+
+# Superpowers artifacts
+docs/superpowers/
+
+# Binaries
+hatch
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode Extension
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
+
+# Certificates
+certs/
+
+# Environment
+.env
+.env.*
