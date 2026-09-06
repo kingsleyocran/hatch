@@ -1,5 +1,6 @@
 # Claude Code
 .claude/
+.remember/
 
 # Superpowers artifacts
 docs/superpowers/
