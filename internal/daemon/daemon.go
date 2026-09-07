@@ -25,8 +25,9 @@ type Daemon struct {
 	watcher  *watcher.Watcher
 	server   *Server
 
-	mu      sync.Mutex
-	running bool
+	mu        sync.Mutex
+	running   bool
+	startTime time.Time
 }
 
 func NewDaemon(cfg *config.Config, store *project.Store, sockPath string) *Daemon {
@@ -99,6 +100,7 @@ func (d *Daemon) Start() error {
 	}
 
 	d.running = true
+	d.startTime = time.Now()
 	return nil
 }
 
@@ -189,6 +191,24 @@ func (d *Daemon) handleRequest(req Request) Response {
 			})
 		}
 		return Response{OK: true, Projects: statuses}
+
+	case ActionStatus:
+		projects := d.store.List()
+		activeCount := 0
+		for _, p := range projects {
+			if d.watcher.IsAlive(p.Port) {
+				activeCount++
+			}
+		}
+		return Response{
+			OK: true,
+			Status: &DaemonStatus{
+				Running:     true,
+				Uptime:      time.Since(d.startTime).Truncate(time.Second).String(),
+				DomainCount: len(projects),
+				ActiveCount: activeCount,
+			},
+		}
 
 	case ActionStop:
 		go d.Stop()

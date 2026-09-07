@@ -78,6 +78,17 @@ func (c *Client) List() ([]ProjectStatus, error) {
 	return resp.Projects, nil
 }
 
+func (c *Client) Status() (*DaemonStatus, error) {
+	resp, err := c.send(Request{Action: ActionStatus})
+	if err != nil {
+		return nil, err
+	}
+	if !resp.OK {
+		return nil, errors.New(resp.Message)
+	}
+	return resp.Status, nil
+}
+
 func (c *Client) StopDaemon() error {
 	resp, err := c.send(Request{Action: ActionStop})
 	if err != nil {

@@ -16,10 +16,18 @@ type ProjectStatus struct {
 	HTTPS  bool   `json:"https"`
 }
 
+type DaemonStatus struct {
+	Running     bool   `json:"running"`
+	Uptime      string `json:"uptime"`
+	DomainCount int    `json:"domain_count"`
+	ActiveCount int    `json:"active_count"`
+}
+
 type Response struct {
 	OK       bool            `json:"ok"`
 	Message  string          `json:"message,omitempty"`
 	Projects []ProjectStatus `json:"projects,omitempty"`
+	Status   *DaemonStatus   `json:"status,omitempty"`
 }
 
 const (
@@ -28,4 +36,5 @@ const (
 	ActionList   = "list"
 	ActionStop   = "stop"
 	ActionPing   = "ping"
+	ActionStatus = "status"
 )
