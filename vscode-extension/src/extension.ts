@@ -218,24 +218,34 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('hatch.runSetup', async () => {
       try {
         const binary = await binaryManager.ensureBinary();
-        const terminal = vscode.window.createTerminal({
-          name: 'Hatch Setup',
-          shellPath: '/bin/zsh',
-          shellArgs: ['-c', `sudo "${binary}" setup && echo "" && echo "✓ Setup complete. You can close this terminal." && read`],
-        });
-        terminal.show();
+        const platform = os.platform();
+        const { exec } = require('child_process');
 
-        const listener = vscode.window.onDidCloseTerminal((t) => {
-          if (t === terminal) {
-            listener.dispose();
-            setTimeout(() => {
-              sidebarProvider.refresh();
-              statusBar.update();
-            }, 1000);
-          }
-        });
+        let setupCmd: string;
+        if (platform === 'darwin') {
+          setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+        } else if (platform === 'linux') {
+          setupCmd = `pkexec "${binary}" setup`;
+        } else {
+          setupCmd = `powershell -Command "Start-Process '${binary}' -ArgumentList 'setup' -Verb RunAs -Wait"`;
+        }
+
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: 'Running Hatch setup...' },
+          () => new Promise<void>((resolve, reject) => {
+            exec(setupCmd, (err: Error | null) => {
+              if (err) { reject(err); } else { resolve(); }
+            });
+          })
+        );
+
+        vscode.window.showInformationMessage('Hatch setup complete!');
+        setTimeout(() => {
+          sidebarProvider.refresh();
+          statusBar.update();
+        }, 1000);
       } catch (err) {
-        vscode.window.showErrorMessage(`${err}`);
+        vscode.window.showErrorMessage(`Setup failed: ${err}`);
       }
     }),
 
