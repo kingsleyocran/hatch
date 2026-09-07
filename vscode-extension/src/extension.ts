@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import * as path from 'path';
 import { DaemonClient } from './daemon-client';
-import { DomainTreeProvider } from './domain-tree';
+import { HatchSidebarProvider } from './sidebar-provider';
 import { HatchStatusBar } from './status-bar';
 import { BinaryManager } from './binary-manager';
 import { suggestMapping } from './auto-detect';
@@ -12,28 +12,29 @@ const POLL_INTERVAL = 5000;
 
 export function activate(context: vscode.ExtensionContext): void {
   const client = new DaemonClient(SOCKET_PATH);
-  const treeProvider = new DomainTreeProvider(client);
+  const sidebarProvider = new HatchSidebarProvider(context.extensionUri, client);
   const statusBar = new HatchStatusBar(client);
   const binaryManager = new BinaryManager();
 
-  const treeView = vscode.window.createTreeView('hatchDomains', {
-    treeDataProvider: treeProvider,
-  });
+  const sidebarRegistration = vscode.window.registerWebviewViewProvider(
+    HatchSidebarProvider.viewType,
+    sidebarProvider,
+  );
 
   const pollTimer = setInterval(async () => {
-    treeProvider.refresh();
+    sidebarProvider.refresh();
     await statusBar.update();
   }, POLL_INTERVAL);
 
   context.subscriptions.push(
-    treeView,
+    sidebarRegistration,
     statusBar,
     { dispose: () => clearInterval(pollTimer) },
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('hatch.refresh', () => {
-      treeProvider.refresh();
+      sidebarProvider.refresh();
       statusBar.update();
     }),
 
@@ -59,7 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await client.add(domain, parseInt(portStr, 10), dir, false);
         vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${portStr}`);
-        treeProvider.refresh();
+        sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
         vscode.window.showErrorMessage(`Failed: ${err}`);
@@ -73,7 +74,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await client.remove(domain);
         vscode.window.showInformationMessage(`Removed ${domain}`);
-        treeProvider.refresh();
+        sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
         vscode.window.showErrorMessage(`Failed: ${err}`);
@@ -165,7 +166,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await client.add(domain, selected.port, dir, false);
         vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${selected.port}`);
-        treeProvider.refresh();
+        sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
         vscode.window.showErrorMessage(`Failed: ${err}`);
@@ -187,7 +188,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await client.add(domain, port, dir, false);
         vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${port}`);
-        treeProvider.refresh();
+        sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
         vscode.window.showErrorMessage(`Failed: ${err}`);
@@ -204,7 +205,7 @@ export function activate(context: vscode.ExtensionContext): void {
             return;
           }
           setTimeout(() => {
-            treeProvider.refresh();
+            sidebarProvider.refresh();
             statusBar.update();
           }, 2000);
           vscode.window.showInformationMessage('Hatch daemon started');
@@ -228,7 +229,7 @@ export function activate(context: vscode.ExtensionContext): void {
           if (t === terminal) {
             listener.dispose();
             setTimeout(() => {
-              treeProvider.refresh();
+              sidebarProvider.refresh();
               statusBar.update();
             }, 1000);
           }
@@ -242,7 +243,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await client.stop();
         vscode.window.showInformationMessage('Hatch daemon stopped');
-        treeProvider.refresh();
+        sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
         vscode.window.showErrorMessage(`Failed: ${err}`);
@@ -261,7 +262,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const { exec } = require('child_process');
       exec(`"${binary}" start`, () => {
         setTimeout(() => {
-          treeProvider.refresh();
+          sidebarProvider.refresh();
           statusBar.update();
         }, 2000);
       });

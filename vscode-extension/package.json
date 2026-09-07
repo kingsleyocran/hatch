@@ -28,6 +28,7 @@
     "views": {
       "hatch": [
         {
+          "type": "webview",
           "id": "hatchDomains",
           "name": "Domains"
         }
