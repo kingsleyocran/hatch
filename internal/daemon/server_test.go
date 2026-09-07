@@ -57,7 +57,7 @@ func TestDaemonAddAndList(t *testing.T) {
 
 	c := NewClient(sockPath)
 
-	if err := c.Add("cayacart.test", 3000, "/tmp/cayacart"); err != nil {
+	if err := c.Add("cayacart.test", 3000, "/tmp/cayacart", false); err != nil {
 		t.Fatalf("Add() error: %v", err)
 	}
 
@@ -88,7 +88,7 @@ func TestDaemonRemove(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	c := NewClient(sockPath)
-	c.Add("cayacart.test", 3000, "/tmp/cayacart")
+	c.Add("cayacart.test", 3000, "/tmp/cayacart", false)
 
 	if err := c.Remove("cayacart.test"); err != nil {
 		t.Fatalf("Remove() error: %v", err)

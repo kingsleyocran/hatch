@@ -11,6 +11,7 @@ type Config struct {
 	DefaultTLD string `yaml:"default_tld"`
 	AutoHTTPS  bool   `yaml:"auto_https"`
 	DaemonPort int    `yaml:"daemon_port"`
+	HTTPSPort  int    `yaml:"https_port"`
 	DNSPort    int    `yaml:"dns_port"`
 	LogLevel   string `yaml:"log_level"`
 	LogFile    string `yaml:"log_file"`
@@ -21,10 +22,15 @@ func Default() *Config {
 		DefaultTLD: "test",
 		AutoHTTPS:  false,
 		DaemonPort: 8443,
+		HTTPSPort:  8444,
 		DNSPort:    15353,
 		LogLevel:   "info",
 		LogFile:    filepath.Join(Dir(), "hatch.log"),
 	}
+}
+
+func (c *Config) CertsDir() string {
+	return filepath.Join(Dir(), "certs")
 }
 
 func Dir() string {

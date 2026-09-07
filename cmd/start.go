@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/kingsleyocran/hatch/internal/config"
 	"github.com/kingsleyocran/hatch/internal/daemon"
@@ -32,6 +32,23 @@ var startCmd = &cobra.Command{
 			return nil
 		}
 
+		if !foreground {
+			binary, err := os.Executable()
+			if err != nil {
+				return fmt.Errorf("resolve executable path: %w", err)
+			}
+			child := exec.Command(binary, "start", "--foreground")
+			setForkAttrs(child)
+			child.Stdout = nil
+			child.Stderr = nil
+			child.Stdin = nil
+			if err := child.Start(); err != nil {
+				return fmt.Errorf("start background daemon: %w", err)
+			}
+			fmt.Printf("✓ Hatch daemon started (pid %d)\n", child.Process.Pid)
+			return nil
+		}
+
 		storePath := filepath.Join(config.Dir(), "projects.yaml")
 		store, err := project.Load(storePath)
 		if err != nil {
@@ -44,15 +61,10 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("start daemon: %w", err)
 		}
 
-		fmt.Println("✓ Hatch daemon started")
-
-		if foreground {
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			<-sigCh
-			fmt.Println("\nShutting down...")
-			d.Stop()
-		}
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt)
+		<-sigCh
+		d.Stop()
 
 		return nil
 	},
