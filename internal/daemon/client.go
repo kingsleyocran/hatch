@@ -45,8 +45,8 @@ func (c *Client) Ping() error {
 	return nil
 }
 
-func (c *Client) Add(domain string, port int, dir string) error {
-	resp, err := c.send(Request{Action: ActionAdd, Domain: domain, Port: port, Dir: dir})
+func (c *Client) Add(domain string, port int, dir string, https bool) error {
+	resp, err := c.send(Request{Action: ActionAdd, Domain: domain, Port: port, Dir: dir, HTTPS: https})
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ type Request struct {
 	Domain string `json:"domain,omitempty"`
 	Port   int    `json:"port,omitempty"`
 	Dir    string `json:"dir,omitempty"`
+	HTTPS  bool   `json:"https,omitempty"`
 }
 
 type ProjectStatus struct {

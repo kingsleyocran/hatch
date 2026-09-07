@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,16 +16,18 @@ type route struct {
 	domain  string
 	port    int
 	alive   bool
+	https   bool
 	proxy   *httputil.ReverseProxy
 	stopped http.Handler
 }
 
 type Manager struct {
-	mu     sync.RWMutex
-	routes map[string]*route
-	ports  map[int]bool
-	server *http.Server
-	ws     *WSHub
+	mu        sync.RWMutex
+	routes    map[string]*route
+	ports     map[int]bool
+	server    *http.Server
+	tlsServer *http.Server
+	ws        *WSHub
 }
 
 func New() *Manager {
@@ -54,6 +57,31 @@ func (m *Manager) AddRoute(domain string, port int) {
 		domain:  domain,
 		port:    port,
 		alive:   m.ports[port],
+		proxy:   rp,
+		stopped: NewStoppedHandler(domain, port),
+	}
+}
+
+func (m *Manager) AddRouteHTTPS(domain string, port int, https bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
+	rp := httputil.NewSingleHostReverseProxy(target)
+	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		m.mu.RLock()
+		rt := m.routes[domain]
+		m.mu.RUnlock()
+		if rt != nil {
+			rt.stopped.ServeHTTP(w, r)
+		}
+	}
+
+	m.routes[domain] = &route{
+		domain:  domain,
+		port:    port,
+		alive:   m.ports[port],
+		https:   https,
 		proxy:   rp,
 		stopped: NewStoppedHandler(domain, port),
 	}
@@ -119,6 +147,34 @@ func (m *Manager) Stop() error {
 	return nil
 }
 
+func (m *Manager) StartTLS(addr string, getCert func(*tls.ClientHelloInfo) (*tls.Certificate, error)) error {
+	m.tlsServer = &http.Server{
+		Addr:    addr,
+		Handler: m,
+		TLSConfig: &tls.Config{
+			GetCertificate: getCert,
+		},
+	}
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	tlsLn := tls.NewListener(ln, m.tlsServer.TLSConfig)
+	go m.tlsServer.Serve(tlsLn)
+	return nil
+}
+
+func (m *Manager) StopTLS() error {
+	if m.tlsServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return m.tlsServer.Shutdown(ctx)
+	}
+	return nil
+}
+
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/__hatch/ws" {
 		m.ws.ServeWS(w, r)
@@ -131,6 +187,12 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if rt == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	if rt.https && r.TLS == nil {
+		target := "https://" + r.Host + r.URL.RequestURI()
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
 		return
 	}
 

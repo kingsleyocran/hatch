@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var httpsFlag bool
+
 var addCmd = &cobra.Command{
 	Use:   "add <domain|name> <port>",
 	Short: "Map a local domain to a port",
@@ -32,18 +34,25 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("invalid port: %s (must be 1-65535)", args[1])
 		}
 
+		useHTTPS := httpsFlag || cfg.AutoHTTPS
+
 		dir, _ := os.Getwd()
 
 		c := daemon.NewClient(cfg.SocketPath())
-		if err := c.Add(domain, port, dir); err != nil {
+		if err := c.Add(domain, port, dir, useHTTPS); err != nil {
 			return err
 		}
 
-		fmt.Printf("✓ %s → localhost:%d\n", domain, port)
+		proto := "http"
+		if useHTTPS {
+			proto = "https"
+		}
+		fmt.Printf("✓ %s → localhost:%d (%s)\n", domain, port, proto)
 		return nil
 	},
 }
 
 func init() {
+	addCmd.Flags().BoolVar(&httpsFlag, "https", false, "Enable HTTPS for this domain")
 	rootCmd.AddCommand(addCmd)
 }

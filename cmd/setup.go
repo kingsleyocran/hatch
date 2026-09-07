@@ -8,6 +8,7 @@ import (
 
 	"github.com/kingsleyocran/hatch/internal/config"
 	"github.com/kingsleyocran/hatch/internal/platform"
+	htls "github.com/kingsleyocran/hatch/internal/tls"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,20 @@ var setupCmd = &cobra.Command{
 			return fmt.Errorf("setup port forward: %w", err)
 		}
 		fmt.Println("  ✓ Port forwarding configured")
+
+		fmt.Println("  Setting up HTTPS port forwarding (443 → daemon)...")
+		if err := plat.SetupPortForward(443, cfg.HTTPSPort); err != nil {
+			return fmt.Errorf("setup HTTPS port forward: %w", err)
+		}
+		fmt.Println("  ✓ HTTPS port forwarding configured")
+
+		fmt.Println("  Initializing local Certificate Authority...")
+		if !htls.CAExists(config.Dir()) {
+			if err := htls.InitCA(config.Dir()); err != nil {
+				return fmt.Errorf("init CA: %w", err)
+			}
+		}
+		fmt.Println("  ✓ Local CA initialized")
 
 		if err := config.Save(cfg, config.DefaultPath()); err != nil {
 			return fmt.Errorf("save config: %w", err)

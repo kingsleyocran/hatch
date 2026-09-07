@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"crypto/tls"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	hdns "github.com/kingsleyocran/hatch/internal/dns"
 	"github.com/kingsleyocran/hatch/internal/project"
 	"github.com/kingsleyocran/hatch/internal/proxy"
+	htls "github.com/kingsleyocran/hatch/internal/tls"
 	"github.com/kingsleyocran/hatch/internal/watcher"
 )
 
@@ -16,6 +18,7 @@ type Daemon struct {
 	cfg      *config.Config
 	store    *project.Store
 	sockPath string
+	certsDir string
 
 	resolver *hdns.Resolver
 	proxy    *proxy.Manager
@@ -31,6 +34,7 @@ func NewDaemon(cfg *config.Config, store *project.Store, sockPath string) *Daemo
 		cfg:      cfg,
 		store:    store,
 		sockPath: sockPath,
+		certsDir: cfg.CertsDir(),
 		resolver: hdns.New(),
 		proxy:    proxy.New(),
 	}
@@ -61,9 +65,26 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("start proxy: %w", err)
 	}
 
+	if htls.CAExists(config.Dir()) {
+		ca, caKey, err := htls.LoadCA(config.Dir())
+		if err == nil {
+			getCert := func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				cert, err := htls.LoadCert(d.certsDir, hello.ServerName)
+				if err != nil {
+					return nil, err
+				}
+				return &cert, nil
+			}
+			_ = ca
+			_ = caKey
+			httpsAddr := fmt.Sprintf("127.0.0.1:%d", d.cfg.HTTPSPort)
+			d.proxy.StartTLS(httpsAddr, getCert)
+		}
+	}
+
 	for _, p := range d.store.List() {
 		d.resolver.AddDomain(p.Domain)
-		d.proxy.AddRoute(p.Domain, p.Port)
+		d.proxy.AddRouteHTTPS(p.Domain, p.Port, p.HTTPS)
 		d.watcher.Watch(p.Port)
 	}
 
@@ -91,6 +112,7 @@ func (d *Daemon) Stop() error {
 
 	d.server.Stop()
 	d.watcher.Stop()
+	d.proxy.StopTLS()
 	d.proxy.Stop()
 	d.resolver.Stop()
 
@@ -114,6 +136,7 @@ func (d *Daemon) handleRequest(req Request) Response {
 			Dir:     req.Dir,
 			Domain:  req.Domain,
 			Port:    req.Port,
+			HTTPS:   req.HTTPS,
 			Created: time.Now(),
 		}
 		if err := d.store.Add(p); err != nil {
@@ -123,9 +146,21 @@ func (d *Daemon) handleRequest(req Request) Response {
 			return Response{OK: false, Message: err.Error()}
 		}
 		d.resolver.AddDomain(req.Domain)
-		d.proxy.AddRoute(req.Domain, req.Port)
+		d.proxy.AddRouteHTTPS(req.Domain, req.Port, req.HTTPS)
 		d.watcher.Watch(req.Port)
-		return Response{OK: true, Message: fmt.Sprintf("mapped %s → localhost:%d", req.Domain, req.Port)}
+
+		if req.HTTPS && htls.CAExists(config.Dir()) {
+			ca, caKey, err := htls.LoadCA(config.Dir())
+			if err == nil {
+				htls.GenerateCert(req.Domain, d.certsDir, ca, caKey)
+			}
+		}
+
+		proto := "http"
+		if req.HTTPS {
+			proto = "https"
+		}
+		return Response{OK: true, Message: fmt.Sprintf("mapped %s → localhost:%d (%s)", req.Domain, req.Port, proto)}
 
 	case ActionRemove:
 		p, err := d.store.FindByDomain(req.Domain)
