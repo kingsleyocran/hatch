@@ -60,9 +60,9 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 	rule := d.pfctlRule(fromPort, toPort)
 
 	existing, _ := os.ReadFile(hatchPfConf)
-	if !strings.Contains(string(existing), fmt.Sprintf("port %d", fromPort)) {
-		content := string(existing) + rule
-		if err := os.WriteFile(hatchPfConf, []byte(content), 0644); err != nil {
+	existingStr := string(existing)
+	if !strings.Contains(existingStr, fmt.Sprintf("port %d ->", fromPort)) {
+		if err := os.WriteFile(hatchPfConf, []byte(existingStr+rule), 0644); err != nil {
 			return fmt.Errorf("write pf rules: %w", err)
 		}
 	}
@@ -71,8 +71,8 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 	pfStr := string(pfConf)
 	needsUpdate := false
 
-	if !strings.Contains(pfStr, "anchor \"com.hatch\"") {
-		pfStr = pfStr + "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n"
+	if !strings.Contains(pfStr, "rdr-anchor \"com.hatch\"") {
+		pfStr = pfStr + "\nrdr-anchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n"
 		needsUpdate = true
 	}
 
@@ -98,7 +98,7 @@ func (d *Darwin) TeardownPortForward(fromPort, toPort int) error {
 
 	pfConf, err := os.ReadFile("/etc/pf.conf")
 	if err == nil {
-		cleaned := strings.Replace(string(pfConf), "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n", "", 1)
+		cleaned := strings.Replace(string(pfConf), "\nrdr-anchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n", "", 1)
 		os.WriteFile("/etc/pf.conf", []byte(cleaned), 0644)
 		exec.Command("pfctl", "-f", "/etc/pf.conf").Run()
 	}
