@@ -183,59 +183,85 @@ export class HatchSidebarProvider implements vscode.WebviewViewProvider {
     }
 
     const domainItems = domains.map(d => {
-      const status = d.alive ? 'active' : 'stopped';
-      const statusClass = d.alive ? 'status-active' : 'status-stopped';
-      const dot = d.alive ? '&#x25CF;' : '&#x25CB;';
-      const proto = d.https ? 'https' : 'http';
-      return `<div class="item">
-        <div class="item-main">
-          <span class="${statusClass}">${dot}</span>
-          <span class="item-name">${d.domain}</span>
-          <span class="item-port">:${d.port}</span>
-        </div>
-        <div class="item-meta">${status}${d.https ? ' &middot; https' : ''}</div>
-        <div class="item-actions">
-          <button class="icon-btn" title="Open in browser" onclick="post('openDomain', { domain: '${d.domain}', https: ${d.https} })">&#x2197;</button>
-          <button class="icon-btn danger" title="Remove" onclick="post('removeDomain', { domain: '${d.domain}' })">&#x2715;</button>
+      const statusDot = d.alive
+        ? '<span class="dot dot-green"></span>'
+        : '<span class="dot dot-red"></span>';
+      const statusLabel = d.alive ? 'Active' : 'Stopped';
+      const httpsLabel = d.https ? ' · HTTPS' : '';
+      return `<div class="card">
+        <div class="card-row">
+          ${statusDot}
+          <div class="card-info">
+            <span class="card-title">${d.domain}</span>
+            <span class="card-sub">Port ${d.port} · ${statusLabel}${httpsLabel}</span>
+          </div>
+          <div class="card-actions">
+            <button class="act-btn" title="Open in browser" onclick="post('openDomain', { domain: '${d.domain}', https: ${d.https} })">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1h6v1H2v12h12V8.5h1v6.5H1V1h.5zm7 0H14v5.5h-1V2.707L7.354 8.354l-.708-.708L12.293 2H8.5V1z"/></svg>
+            </button>
+            <button class="act-btn act-danger" title="Remove mapping" onclick="post('removeDomain', { domain: '${d.domain}' })">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8.707l3.646 3.647.708-.708L8.707 8l3.647-3.646-.708-.708L8 7.293 4.354 3.646l-.708.708L7.293 8l-3.647 3.646.708.708L8 8.707z"/></svg>
+            </button>
+          </div>
         </div>
       </div>`;
     }).join('');
 
     const portItems = ports.map(p => {
       const label = p.name || `pid:${p.pid}`;
-      const typeStr = p.type ? ` &middot; ${p.type}` : '';
-      return `<div class="item">
-        <div class="item-main">
-          <span class="status-port">&#x26A1;</span>
-          <span class="item-port-num">:${p.port}</span>
-          <span class="item-name">${label}</span>
-        </div>
-        <div class="item-meta">${p.process}${typeStr}</div>
-        <div class="item-actions">
-          <button class="icon-btn add" title="Map to domain" onclick="post('mapPort', { port: ${p.port} })">+</button>
+      const meta = [p.process, p.type].filter(Boolean).join(' · ');
+      return `<div class="card">
+        <div class="card-row">
+          <span class="dot dot-amber"></span>
+          <div class="card-info">
+            <span class="card-title">${label}</span>
+            <span class="card-sub">Port ${p.port}${meta ? ' · ' + meta : ''}</span>
+          </div>
+          <div class="card-actions">
+            <button class="act-btn act-add" title="Map to domain" onclick="post('mapPort', { port: ${p.port} })">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1v7H1v1h7v7h1V9h7V8H9V1H8z"/></svg>
+            </button>
+          </div>
         </div>
       </div>`;
     }).join('');
+
+    const domainCount = domains.length;
+    const portCount = ports.length;
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>${this.getStyles()}</style></head>
 <body>
-  <div class="toolbar">
-    <button class="toolbar-btn" onclick="post('addDomain')" title="Add domain">+</button>
-    <button class="toolbar-btn" onclick="post('scanPorts')" title="Scan ports">&#x27F3;</button>
-    <button class="toolbar-btn" onclick="post('refresh')" title="Refresh">&#x21BB;</button>
+  <div class="section">
+    <div class="section-header">
+      <span>Mapped Domains</span>
+      <div class="section-actions">
+        <span class="badge">${domainCount}</span>
+        <button class="hdr-btn" title="Add domain" onclick="post('addDomain')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1v7H1v1h7v7h1V9h7V8H9V1H8z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="card-list">
+      ${domainItems || '<div class="empty">No domains mapped yet. Click + to add one.</div>'}
+    </div>
   </div>
 
   <div class="section">
-    <div class="section-header">Mapped Domains</div>
-    ${domainItems || '<div class="empty">No domains mapped yet</div>'}
-  </div>
-
-  <div class="section">
-    <div class="section-header">Running Ports</div>
-    ${portItems || '<div class="empty">No unmapped ports detected</div>'}
+    <div class="section-header">
+      <span>Running Ports</span>
+      <div class="section-actions">
+        <span class="badge">${portCount}</span>
+        <button class="hdr-btn" title="Refresh" onclick="post('refresh')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13 3.1V1h1v4h-4V4h2.5A5.5 5.5 0 003.05 5.1l-.9-.4A6.5 6.5 0 0113 3.1zM3 12.9V15H2v-4h4v1H3.5a5.5 5.5 0 009.45-1.1l.9.4A6.5 6.5 0 013 12.9z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="card-list">
+      ${portItems || '<div class="empty">No unmapped ports detected</div>'}
+    </div>
   </div>
 
   <script>${this.getScript()}</script>
@@ -257,133 +283,160 @@ export class HatchSidebarProvider implements vscode.WebviewViewProvider {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 32px 16px;
+        padding: 40px 20px;
         text-align: center;
-        min-height: 200px;
+        min-height: 240px;
       }
       .setup-icon {
-        font-size: 32px;
-        margin-bottom: 12px;
-        opacity: 0.6;
+        font-size: 36px;
+        margin-bottom: 16px;
+        opacity: 0.4;
       }
       h2 {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         color: var(--vscode-foreground);
       }
       .description {
-        font-size: 12px;
-        line-height: 1.5;
+        font-size: 11.5px;
+        line-height: 1.6;
         color: var(--vscode-descriptionForeground);
-        margin-bottom: 8px;
-        max-width: 240px;
+        margin-bottom: 6px;
+        max-width: 220px;
       }
-      .muted { opacity: 0.7; }
+      .muted { opacity: 0.6; font-size: 11px; }
       .primary-btn {
-        margin-top: 12px;
-        padding: 6px 16px;
+        margin-top: 16px;
+        padding: 7px 20px;
         background: var(--vscode-button-background);
         color: var(--vscode-button-foreground);
         border: none;
-        border-radius: 3px;
+        border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
+        font-weight: 500;
         font-family: var(--vscode-font-family);
+        transition: background 0.15s;
       }
       .primary-btn:hover { background: var(--vscode-button-hoverBackground); }
-      .toolbar {
-        display: flex;
-        justify-content: flex-end;
-        gap: 4px;
-        padding: 6px 8px;
-        border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
-      }
-      .toolbar-btn {
-        background: none;
-        border: none;
-        color: var(--vscode-foreground);
-        cursor: pointer;
-        padding: 2px 6px;
-        font-size: 14px;
-        border-radius: 3px;
-        opacity: 0.7;
-      }
-      .toolbar-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
-      .section { padding: 0; }
+      .section { margin-bottom: 4px; }
       .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding: 8px 12px 4px;
+        padding: 10px 12px 6px;
         color: var(--vscode-sideBarSectionHeader-foreground);
-        background: var(--vscode-sideBarSectionHeader-background);
       }
-      .item {
-        padding: 6px 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        position: relative;
-        border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
-      }
-      .item:hover { background: var(--vscode-list-hoverBackground); }
-      .item-main {
+      .section-actions {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
-      .item-name {
-        font-size: 12px;
-        font-weight: 500;
+      .badge {
+        font-size: 10px;
+        font-weight: 600;
+        min-width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 9px;
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+      }
+      .hdr-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        background: none;
+        border: none;
+        border-radius: 4px;
+        color: var(--vscode-foreground);
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      .hdr-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
+      .card-list { padding: 0 8px 4px; }
+      .card {
+        margin-bottom: 4px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.04));
+        transition: background 0.15s;
+      }
+      .card:hover { background: var(--vscode-list-activeSelectionBackground, rgba(255,255,255,0.08)); }
+      .card-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .dot-green { background: #3fb950; }
+      .dot-red { background: #f85149; }
+      .dot-amber { background: #d29922; }
+      .card-info {
         flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .card-title {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--vscode-foreground);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .item-port, .item-port-num {
-        font-size: 11px;
-        opacity: 0.7;
-        font-family: var(--vscode-editor-font-family);
-      }
-      .item-meta {
+      .card-sub {
         font-size: 11px;
         color: var(--vscode-descriptionForeground);
-        padding-left: 20px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .item-actions {
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        display: none;
+      .card-actions {
+        display: flex;
         gap: 2px;
+        opacity: 0;
+        transition: opacity 0.15s;
       }
-      .item:hover .item-actions { display: flex; }
-      .icon-btn {
+      .card:hover .card-actions { opacity: 1; }
+      .act-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
         background: none;
         border: none;
+        border-radius: 4px;
         color: var(--vscode-foreground);
         cursor: pointer;
-        padding: 2px 5px;
-        font-size: 12px;
-        border-radius: 3px;
         opacity: 0.7;
+        transition: opacity 0.15s, background 0.15s;
       }
-      .icon-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
-      .icon-btn.danger:hover { color: var(--vscode-errorForeground); }
-      .icon-btn.add { font-size: 16px; font-weight: bold; }
-      .icon-btn.add:hover { color: var(--vscode-terminal-ansiGreen); }
-      .status-active { color: var(--vscode-terminal-ansiGreen); font-size: 10px; }
-      .status-stopped { color: var(--vscode-errorForeground); font-size: 10px; }
-      .status-port { font-size: 10px; color: var(--vscode-terminal-ansiYellow); }
+      .act-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
+      .act-danger:hover { color: #f85149; }
+      .act-add:hover { color: #3fb950; }
       .empty {
-        padding: 12px;
-        font-size: 12px;
+        padding: 16px 12px;
+        font-size: 11.5px;
         color: var(--vscode-descriptionForeground);
         text-align: center;
-        font-style: italic;
       }
     `;
   }
