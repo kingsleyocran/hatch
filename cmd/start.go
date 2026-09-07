@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/kingsleyocran/hatch/internal/config"
 	"github.com/kingsleyocran/hatch/internal/daemon"
@@ -39,7 +38,7 @@ var startCmd = &cobra.Command{
 				return fmt.Errorf("resolve executable path: %w", err)
 			}
 			child := exec.Command(binary, "start", "--foreground")
-			child.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+			setForkAttrs(child)
 			child.Stdout = nil
 			child.Stderr = nil
 			child.Stdin = nil
@@ -63,7 +62,7 @@ var startCmd = &cobra.Command{
 		}
 
 		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(sigCh, os.Interrupt)
 		<-sigCh
 		d.Stop()
 

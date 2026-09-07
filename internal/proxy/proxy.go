@@ -38,30 +38,6 @@ func New() *Manager {
 	}
 }
 
-func (m *Manager) AddRoute(domain string, port int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
-	rp := httputil.NewSingleHostReverseProxy(target)
-	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		m.mu.RLock()
-		rt := m.routes[domain]
-		m.mu.RUnlock()
-		if rt != nil {
-			rt.stopped.ServeHTTP(w, r)
-		}
-	}
-
-	m.routes[domain] = &route{
-		domain:  domain,
-		port:    port,
-		alive:   m.ports[port],
-		proxy:   rp,
-		stopped: NewStoppedHandler(domain, port),
-	}
-}
-
 func (m *Manager) AddRouteHTTPS(domain string, port int, https bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

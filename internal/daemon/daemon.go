@@ -3,6 +3,7 @@ package daemon
 import (
 	"crypto/tls"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -67,8 +68,7 @@ func (d *Daemon) Start() error {
 	}
 
 	if htls.CAExists(config.Dir()) {
-		ca, caKey, err := htls.LoadCA(config.Dir())
-		if err == nil {
+		if _, _, err := htls.LoadCA(config.Dir()); err == nil {
 			getCert := func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 				cert, err := htls.LoadCert(d.certsDir, hello.ServerName)
 				if err != nil {
@@ -76,10 +76,10 @@ func (d *Daemon) Start() error {
 				}
 				return &cert, nil
 			}
-			_ = ca
-			_ = caKey
 			httpsAddr := fmt.Sprintf("127.0.0.1:%d", d.cfg.HTTPSPort)
-			d.proxy.StartTLS(httpsAddr, getCert)
+			if err := d.proxy.StartTLS(httpsAddr, getCert); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: HTTPS listener failed to start: %v\n", err)
+			}
 		}
 	}
 
@@ -154,7 +154,9 @@ func (d *Daemon) handleRequest(req Request) Response {
 		if req.HTTPS && htls.CAExists(config.Dir()) {
 			ca, caKey, err := htls.LoadCA(config.Dir())
 			if err == nil {
-				htls.GenerateCert(req.Domain, d.certsDir, ca, caKey)
+				if err := htls.GenerateCert(req.Domain, d.certsDir, ca, caKey); err != nil {
+					return Response{OK: false, Message: fmt.Sprintf("generate cert for %s: %s", req.Domain, err)}
+				}
 			}
 		}
 
