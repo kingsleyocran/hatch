@@ -8,7 +8,7 @@ interface DetectedProject {
   type: string;
 }
 
-function detectProject(dir: string): DetectedProject | null {
+export function detectProject(dir: string): DetectedProject | null {
   const packageJsonPath = path.join(dir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {

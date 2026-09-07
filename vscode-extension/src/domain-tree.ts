@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { execFile } from 'child_process';
 import { DaemonClient } from './daemon-client';
+import { detectProject } from './auto-detect';
 import { ProjectStatus } from './types';
 
 export class SectionItem extends vscode.TreeItem {
@@ -31,6 +33,8 @@ export class DomainItem extends vscode.TreeItem {
 
 export interface DetectedPort {
   port: number;
+  pid: number;
+  process: string;
   name: string;
   type: string;
   dir: string;
@@ -39,9 +43,22 @@ export interface DetectedPort {
 export class PortItem extends vscode.TreeItem {
   constructor(public readonly detected: DetectedPort) {
     super(`:${detected.port}`, vscode.TreeItemCollapsibleState.None);
-    const typeStr = detected.type ? ` (${detected.type})` : '';
-    this.description = `${detected.name}${typeStr}`;
-    this.tooltip = `Port ${detected.port}\n${detected.name}\n${detected.dir}`;
+    const parts: string[] = [];
+    if (detected.name && detected.name !== detected.process) {
+      parts.push(detected.name);
+    }
+    if (detected.process) {
+      parts.push(detected.process);
+    }
+    if (detected.type) {
+      parts.push(detected.type);
+    }
+    this.description = parts.join(' · ') || 'unknown';
+    const lines = [`Port ${detected.port}`];
+    if (detected.name) { lines.push(`Project: ${detected.name}`); }
+    if (detected.process) { lines.push(`Process: ${detected.process}`); }
+    if (detected.dir) { lines.push(`Dir: ${detected.dir}`); }
+    this.tooltip = lines.join('\n');
     this.iconPath = new vscode.ThemeIcon('plug', new vscode.ThemeColor('charts.yellow'));
     this.contextValue = 'unmappedPort';
   }
@@ -105,35 +122,68 @@ export class DomainTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   private async scanUnmappedPorts(): Promise<DetectedPort[]> {
     const mappedPorts = new Set(this.mappedDomains.map(d => d.port));
 
-    return new Promise((resolve) => {
+    const rawPorts = await new Promise<Array<{ port: number; pid: number; process: string }>>((resolve) => {
       execFile('lsof', ['-iTCP', '-sTCP:LISTEN', '-n', '-P', '-F', 'pcn'], (err, stdout) => {
-        if (err || !stdout) {
-          resolve([]);
-          return;
-        }
+        if (err || !stdout) { resolve([]); return; }
 
-        const ports: DetectedPort[] = [];
+        const result: Array<{ port: number; pid: number; process: string }> = [];
         let currentPID = 0;
+        let currentCmd = '';
         const seen = new Set<number>();
 
         for (const line of stdout.split('\n')) {
           if (!line) continue;
           if (line[0] === 'p') {
             currentPID = parseInt(line.slice(1), 10);
+            currentCmd = '';
+          } else if (line[0] === 'c') {
+            currentCmd = line.slice(1);
           } else if (line[0] === 'n') {
             const idx = line.lastIndexOf(':');
             if (idx >= 0) {
               const port = parseInt(line.slice(idx + 1), 10);
               if (port > 0 && !mappedPorts.has(port) && !seen.has(port) && port !== 8443 && port !== 8444 && port !== 15353) {
                 seen.add(port);
-                ports.push({ port, name: `pid:${currentPID}`, type: '', dir: '' });
+                result.push({ port, pid: currentPID, process: currentCmd });
               }
             }
           }
         }
+        resolve(result);
+      });
+    });
 
-        ports.sort((a, b) => a.port - b.port);
-        resolve(ports);
+    const ports: DetectedPort[] = await Promise.all(
+      rawPorts.map(async (raw) => {
+        const dir = await this.getProcessDir(raw.pid);
+        let name = dir ? path.basename(dir) : '';
+        let type = '';
+        if (dir) {
+          const project = detectProject(dir);
+          if (project) {
+            name = project.name;
+            type = project.type;
+          }
+        }
+        return { port: raw.port, pid: raw.pid, process: raw.process, name, type, dir };
+      })
+    );
+
+    ports.sort((a, b) => a.port - b.port);
+    return ports;
+  }
+
+  private getProcessDir(pid: number): Promise<string> {
+    return new Promise((resolve) => {
+      execFile('lsof', ['-p', String(pid), '-Fn', '-d', 'cwd'], (err, stdout) => {
+        if (err || !stdout) { resolve(''); return; }
+        for (const line of stdout.split('\n')) {
+          if (line.startsWith('n/')) {
+            resolve(line.slice(1));
+            return;
+          }
+        }
+        resolve('');
       });
     });
   }
