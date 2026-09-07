@@ -175,7 +175,7 @@ export class DomainTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
   private getProcessDir(pid: number): Promise<string> {
     return new Promise((resolve) => {
-      execFile('lsof', ['-p', String(pid), '-Fn', '-d', 'cwd'], (err, stdout) => {
+      execFile('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], (err, stdout) => {
         if (err || !stdout) { resolve(''); return; }
         for (const line of stdout.split('\n')) {
           if (line.startsWith('n/')) {
