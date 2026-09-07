@@ -103,9 +103,94 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand('hatch.scanPorts', async () => {
-      vscode.window.showInformationMessage(
-        'Run "hatch scan" in your terminal for interactive port scanning.'
-      );
+      const running = await client.isRunning();
+      if (!running) {
+        vscode.window.showWarningMessage('Start the Hatch daemon first.');
+        return;
+      }
+
+      const { execFile } = require('child_process');
+      const ports: Array<{ port: number; label: string }> = await new Promise((resolve) => {
+        execFile('lsof', ['-iTCP', '-sTCP:LISTEN', '-n', '-P', '-F', 'pcn'],
+          (err: Error | null, stdout: string) => {
+            if (err || !stdout) { resolve([]); return; }
+            const result: Array<{ port: number; label: string }> = [];
+            const seen = new Set<number>();
+            let pid = 0;
+            for (const line of stdout.split('\n')) {
+              if (!line) continue;
+              if (line[0] === 'p') pid = parseInt(line.slice(1), 10);
+              else if (line[0] === 'n' && line.includes('127.0.0.1')) {
+                const idx = line.lastIndexOf(':');
+                if (idx >= 0) {
+                  const port = parseInt(line.slice(idx + 1), 10);
+                  if (port > 0 && !seen.has(port) && port !== 8443 && port !== 8444 && port !== 15353) {
+                    seen.add(port);
+                    result.push({ port, label: `:${port} (pid:${pid})` });
+                  }
+                }
+              }
+            }
+            resolve(result);
+          }
+        );
+      });
+
+      if (ports.length === 0) {
+        vscode.window.showInformationMessage('No unmapped ports detected.');
+        return;
+      }
+
+      const picks = ports.map(p => ({
+        label: p.label,
+        port: p.port,
+      }));
+
+      const selected = await vscode.window.showQuickPick(picks, {
+        placeHolder: 'Select a port to map to a domain',
+        canPickMany: false,
+      });
+
+      if (!selected) return;
+
+      const domain = await vscode.window.showInputBox({
+        prompt: 'Domain name',
+        placeHolder: 'myapp.test',
+      });
+      if (!domain) return;
+
+      const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+
+      try {
+        await client.add(domain, selected.port, dir, false);
+        vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${selected.port}`);
+        treeProvider.refresh();
+        statusBar.update();
+      } catch (err) {
+        vscode.window.showErrorMessage(`Failed: ${err}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('hatch.mapPort', async (item: any) => {
+      const port = item?.detected?.port;
+      if (!port) return;
+
+      const domain = await vscode.window.showInputBox({
+        prompt: 'Domain name',
+        placeHolder: 'myapp.test',
+      });
+      if (!domain) return;
+
+      const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+
+      try {
+        await client.add(domain, port, dir, false);
+        vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${port}`);
+        treeProvider.refresh();
+        statusBar.update();
+      } catch (err) {
+        vscode.window.showErrorMessage(`Failed: ${err}`);
+      }
     }),
 
     vscode.commands.registerCommand('hatch.startDaemon', async () => {
@@ -140,9 +225,21 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  binaryManager.findBinary().then((binary) => {
+  binaryManager.findBinary().then(async (binary) => {
     if (!binary) {
       binaryManager.ensureBinary().catch(() => {});
+      return;
+    }
+
+    const running = await client.isRunning();
+    if (!running) {
+      const { exec } = require('child_process');
+      exec(`"${binary}" start`, () => {
+        setTimeout(() => {
+          treeProvider.refresh();
+          statusBar.update();
+        }, 2000);
+      });
     }
   });
 

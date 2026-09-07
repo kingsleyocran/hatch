@@ -9,7 +9,7 @@ export class HatchStatusBar {
       vscode.StatusBarAlignment.Left,
       100
     );
-    this.item.command = 'hatch.openDomain';
+    this.item.command = 'hatchDomains.focus';
     this.item.show();
   }
 
@@ -18,7 +18,6 @@ export class HatchStatusBar {
     if (!running) {
       this.item.text = '$(globe) Hatch: offline';
       this.item.tooltip = 'Hatch daemon is not running';
-      this.item.command = 'hatch.startDaemon';
       return;
     }
 
@@ -36,12 +35,10 @@ export class HatchStatusBar {
       if (match) {
         const proto = match.https ? 'https' : 'http';
         this.item.text = `$(globe) ${match.domain}`;
-        this.item.tooltip = `${proto}://${match.domain} → localhost:${match.port}\nClick to open`;
-        this.item.command = 'hatch.openDomain';
+        this.item.tooltip = `${proto}://${match.domain} → localhost:${match.port}\nClick to open sidebar`;
       } else {
         this.item.text = '$(globe) Hatch: no domain';
         this.item.tooltip = 'No domain mapped for this workspace';
-        this.item.command = 'hatch.addDomain';
       }
     } catch {
       this.item.text = '$(globe) Hatch';

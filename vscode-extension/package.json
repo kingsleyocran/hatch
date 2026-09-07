@@ -66,6 +66,11 @@
       {
         "command": "hatch.stopDaemon",
         "title": "Hatch: Stop Daemon"
+      },
+      {
+        "command": "hatch.mapPort",
+        "title": "Hatch: Map Port to Domain",
+        "icon": "$(add)"
       }
     ],
     "menus": {
@@ -89,12 +94,17 @@
       "view/item/context": [
         {
           "command": "hatch.openDomain",
-          "when": "view == hatchDomains",
+          "when": "view == hatchDomains && viewItem == domain",
           "group": "inline"
         },
         {
           "command": "hatch.removeDomain",
-          "when": "view == hatchDomains",
+          "when": "view == hatchDomains && viewItem == domain",
+          "group": "inline"
+        },
+        {
+          "command": "hatch.mapPort",
+          "when": "view == hatchDomains && viewItem == unmappedPort",
           "group": "inline"
         }
       ]
