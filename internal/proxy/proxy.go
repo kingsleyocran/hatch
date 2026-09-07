@@ -24,12 +24,14 @@ type Manager struct {
 	routes map[string]*route
 	ports  map[int]bool
 	server *http.Server
+	ws     *WSHub
 }
 
 func New() *Manager {
 	return &Manager{
 		routes: make(map[string]*route),
 		ports:  make(map[int]bool),
+		ws:     NewWSHub(),
 	}
 }
 
@@ -75,12 +77,17 @@ func (m *Manager) Routes() []string {
 
 func (m *Manager) SetPortStatus(port int, alive bool) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	wasAlive := m.ports[port]
 	m.ports[port] = alive
 	for _, r := range m.routes {
 		if r.port == port {
 			r.alive = alive
 		}
+	}
+	m.mu.Unlock()
+
+	if alive && !wasAlive {
+		m.ws.Broadcast("ready")
 	}
 }
 
@@ -113,6 +120,11 @@ func (m *Manager) Stop() error {
 }
 
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/__hatch/ws" {
+		m.ws.ServeWS(w, r)
+		return
+	}
+
 	m.mu.RLock()
 	rt := m.routes[r.Host]
 	m.mu.RUnlock()
