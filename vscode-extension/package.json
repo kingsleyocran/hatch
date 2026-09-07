@@ -1,0 +1,139 @@
+{
+  "name": "hatch",
+  "displayName": "Hatch",
+  "description": "Map local domains to your running apps",
+  "version": "0.1.0",
+  "publisher": "kingsleyocran",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kingsleyocran/hatch"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hatch",
+          "title": "Hatch",
+          "icon": "$(globe)"
+        }
+      ]
+    },
+    "views": {
+      "hatch": [
+        {
+          "type": "webview",
+          "id": "hatchDomains",
+          "name": "Domains"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "hatch.addDomain",
+        "title": "Hatch: Add Domain",
+        "icon": "$(add)"
+      },
+      {
+        "command": "hatch.removeDomain",
+        "title": "Hatch: Remove Domain",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "hatch.openDomain",
+        "title": "Hatch: Open in Browser",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "hatch.scanPorts",
+        "title": "Hatch: Scan Ports",
+        "icon": "$(search)"
+      },
+      {
+        "command": "hatch.refresh",
+        "title": "Hatch: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hatch.startDaemon",
+        "title": "Hatch: Start Daemon"
+      },
+      {
+        "command": "hatch.stopDaemon",
+        "title": "Hatch: Stop Daemon"
+      },
+      {
+        "command": "hatch.runSetup",
+        "title": "Hatch: Run Setup",
+        "icon": "$(key)"
+      },
+      {
+        "command": "hatch.mapPort",
+        "title": "Hatch: Map Port to Domain",
+        "icon": "$(add)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "hatch.addDomain",
+          "when": "view == hatchDomains",
+          "group": "navigation"
+        },
+        {
+          "command": "hatch.scanPorts",
+          "when": "view == hatchDomains",
+          "group": "navigation"
+        },
+        {
+          "command": "hatch.refresh",
+          "when": "view == hatchDomains",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "hatch.openDomain",
+          "when": "view == hatchDomains && viewItem == domain",
+          "group": "inline"
+        },
+        {
+          "command": "hatch.removeDomain",
+          "when": "view == hatchDomains && viewItem == domain",
+          "group": "inline"
+        },
+        {
+          "command": "hatch.mapPort",
+          "when": "view == hatchDomains && viewItem == unmappedPort",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.50.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "glob": "^10.3.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.0"
+  }
+}

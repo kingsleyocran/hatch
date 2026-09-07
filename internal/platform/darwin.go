@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type Darwin struct{}
@@ -51,24 +52,39 @@ func (d *Darwin) pfctlRule(fromPort, toPort int) string {
 }
 
 func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
-	anchorDir := "/etc/pf.anchors"
-	if err := os.MkdirAll(anchorDir, 0755); err != nil {
+	hatchPfConf := "/etc/pf.anchors/com.hatch"
+	if err := os.MkdirAll(filepath.Dir(hatchPfConf), 0755); err != nil {
 		return err
 	}
 
 	rule := d.pfctlRule(fromPort, toPort)
-	anchorFile := filepath.Join(anchorDir, "com.hatch")
 
-	existing, _ := os.ReadFile(anchorFile)
-	content := string(existing) + rule
-
-	if err := os.WriteFile(anchorFile, []byte(content), 0644); err != nil {
-		return fmt.Errorf("write pf anchor: %w", err)
+	existing, _ := os.ReadFile(hatchPfConf)
+	if !strings.Contains(string(existing), fmt.Sprintf("port %d", fromPort)) {
+		content := string(existing) + rule
+		if err := os.WriteFile(hatchPfConf, []byte(content), 0644); err != nil {
+			return fmt.Errorf("write pf rules: %w", err)
+		}
 	}
 
-	cmd := exec.Command("pfctl", "-a", "com.hatch", "-f", anchorFile)
+	pfConf, _ := os.ReadFile("/etc/pf.conf")
+	pfStr := string(pfConf)
+	needsUpdate := false
+
+	if !strings.Contains(pfStr, "anchor \"com.hatch\"") {
+		pfStr = pfStr + "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n"
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		if err := os.WriteFile("/etc/pf.conf", []byte(pfStr), 0644); err != nil {
+			return fmt.Errorf("update pf.conf: %w", err)
+		}
+	}
+
+	cmd := exec.Command("pfctl", "-f", "/etc/pf.conf")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("pfctl load: %s: %w", string(out), err)
+		return fmt.Errorf("pfctl reload: %s: %w", string(out), err)
 	}
 
 	cmd = exec.Command("pfctl", "-e")
@@ -78,10 +94,15 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 }
 
 func (d *Darwin) TeardownPortForward(fromPort, toPort int) error {
-	cmd := exec.Command("pfctl", "-a", "com.hatch", "-F", "all")
-	cmd.CombinedOutput()
-
 	os.Remove("/etc/pf.anchors/com.hatch")
+
+	pfConf, err := os.ReadFile("/etc/pf.conf")
+	if err == nil {
+		cleaned := strings.Replace(string(pfConf), "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n", "", 1)
+		os.WriteFile("/etc/pf.conf", []byte(cleaned), 0644)
+		exec.Command("pfctl", "-f", "/etc/pf.conf").Run()
+	}
+
 	return nil
 }
 
