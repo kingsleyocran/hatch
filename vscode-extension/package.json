@@ -68,6 +68,11 @@
         "title": "Hatch: Stop Daemon"
       },
       {
+        "command": "hatch.runSetup",
+        "title": "Hatch: Run Setup",
+        "icon": "$(key)"
+      },
+      {
         "command": "hatch.mapPort",
         "title": "Hatch: Map Port to Domain",
         "icon": "$(add)"

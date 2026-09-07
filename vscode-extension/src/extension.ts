@@ -214,6 +214,30 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
 
+    vscode.commands.registerCommand('hatch.runSetup', async () => {
+      try {
+        const binary = await binaryManager.ensureBinary();
+        const terminal = vscode.window.createTerminal({
+          name: 'Hatch Setup',
+          shellPath: '/bin/zsh',
+          shellArgs: ['-c', `sudo "${binary}" setup && echo "" && echo "✓ Setup complete. You can close this terminal." && read`],
+        });
+        terminal.show();
+
+        const listener = vscode.window.onDidCloseTerminal((t) => {
+          if (t === terminal) {
+            listener.dispose();
+            setTimeout(() => {
+              treeProvider.refresh();
+              statusBar.update();
+            }, 1000);
+          }
+        });
+      } catch (err) {
+        vscode.window.showErrorMessage(`${err}`);
+      }
+    }),
+
     vscode.commands.registerCommand('hatch.stopDaemon', async () => {
       try {
         await client.stop();

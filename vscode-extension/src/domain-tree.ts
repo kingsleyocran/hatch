@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import { DaemonClient } from './daemon-client';
@@ -85,6 +87,20 @@ export class DomainTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
   async getChildren(element?: TreeNode): Promise<TreeNode[]> {
     if (!element) {
+      if (!this.isSetupDone()) {
+        const welcomeItem = new vscode.TreeItem('Initial setup required');
+        welcomeItem.description = 'Configures DNS and port forwarding';
+        welcomeItem.iconPath = new vscode.ThemeIcon('shield', new vscode.ThemeColor('charts.blue'));
+        welcomeItem.tooltip = 'Hatch needs one-time setup to configure local DNS resolution and port forwarding so your .test domains work in the browser. This requires admin access.';
+
+        const setupItem = new vscode.TreeItem('Run Setup (requires password)');
+        setupItem.command = { command: 'hatch.runSetup', title: 'Run Setup' };
+        setupItem.iconPath = new vscode.ThemeIcon('key', new vscode.ThemeColor('charts.green'));
+        setupItem.tooltip = 'Opens a terminal to run the setup command with admin privileges';
+
+        return [welcomeItem as TreeNode, setupItem as TreeNode];
+      }
+
       const running = await this.client.isRunning();
       if (!running) {
         const offlineItem = new vscode.TreeItem('Daemon offline — click to start');
@@ -117,6 +133,18 @@ export class DomainTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     return [];
+  }
+
+  private isSetupDone(): boolean {
+    const platform = os.platform();
+    if (platform === 'darwin') {
+      return fs.existsSync('/etc/resolver/test');
+    }
+    if (platform === 'linux') {
+      return fs.existsSync('/etc/systemd/resolved.conf.d/hatch.conf');
+    }
+    const setupMarker = path.join(os.homedir(), '.hatch', '.setup-done');
+    return fs.existsSync(setupMarker);
   }
 
   private async scanUnmappedPorts(): Promise<DetectedPort[]> {
