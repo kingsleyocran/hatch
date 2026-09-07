@@ -120,7 +120,7 @@ export function activate(context: vscode.ExtensionContext): void {
             for (const line of stdout.split('\n')) {
               if (!line) continue;
               if (line[0] === 'p') pid = parseInt(line.slice(1), 10);
-              else if (line[0] === 'n' && line.includes('127.0.0.1')) {
+              else if (line[0] === 'n') {
                 const idx = line.lastIndexOf(':');
                 if (idx >= 0) {
                   const port = parseInt(line.slice(idx + 1), 10);
@@ -131,6 +131,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 }
               }
             }
+            result.sort((a, b) => a.port - b.port);
             resolve(result);
           }
         );
