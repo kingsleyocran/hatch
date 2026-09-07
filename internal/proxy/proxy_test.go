@@ -31,7 +31,7 @@ func TestProxyForwardsToUpstream(t *testing.T) {
 	proxyPort := findFreePort(t)
 
 	mgr := New()
-	mgr.AddRoute("cayacart.test", upstreamPort)
+	mgr.AddRouteHTTPS("cayacart.test", upstreamPort, false)
 	mgr.SetPortStatus(upstreamPort, true)
 
 	if err := mgr.Start(fmt.Sprintf("127.0.0.1:%d", proxyPort)); err != nil {
@@ -60,7 +60,7 @@ func TestProxyServesStoppedPageWhenPortDown(t *testing.T) {
 	proxyPort := findFreePort(t)
 
 	mgr := New()
-	mgr.AddRoute("cayacart.test", 39999)
+	mgr.AddRouteHTTPS("cayacart.test", 39999, false)
 	mgr.SetPortStatus(39999, false)
 
 	if err := mgr.Start(fmt.Sprintf("127.0.0.1:%d", proxyPort)); err != nil {
@@ -111,7 +111,7 @@ func TestProxyReturns404ForUnknownDomain(t *testing.T) {
 
 func TestProxyRemoveRoute(t *testing.T) {
 	mgr := New()
-	mgr.AddRoute("cayacart.test", 3000)
+	mgr.AddRouteHTTPS("cayacart.test", 3000, false)
 	mgr.RemoveRoute("cayacart.test")
 
 	routes := mgr.Routes()

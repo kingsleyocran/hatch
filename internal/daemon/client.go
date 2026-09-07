@@ -45,8 +45,8 @@ func (c *Client) Ping() error {
 	return nil
 }
 
-func (c *Client) Add(domain string, port int, dir string) error {
-	resp, err := c.send(Request{Action: ActionAdd, Domain: domain, Port: port, Dir: dir})
+func (c *Client) Add(domain string, port int, dir string, https bool) error {
+	resp, err := c.send(Request{Action: ActionAdd, Domain: domain, Port: port, Dir: dir, HTTPS: https})
 	if err != nil {
 		return err
 	}
@@ -76,6 +76,17 @@ func (c *Client) List() ([]ProjectStatus, error) {
 		return nil, errors.New(resp.Message)
 	}
 	return resp.Projects, nil
+}
+
+func (c *Client) Status() (*DaemonStatus, error) {
+	resp, err := c.send(Request{Action: ActionStatus})
+	if err != nil {
+		return nil, err
+	}
+	if !resp.OK {
+		return nil, errors.New(resp.Message)
+	}
+	return resp.Status, nil
 }
 
 func (c *Client) StopDaemon() error {
