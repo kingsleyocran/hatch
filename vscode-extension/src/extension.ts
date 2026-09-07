@@ -261,26 +261,80 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  binaryManager.findBinary().then(async (binary) => {
-    if (!binary) {
-      binaryManager.ensureBinary().catch(() => {});
+  autoBootstrap(binaryManager, client, sidebarProvider, statusBar).then(() => {
+    suggestMapping(client);
+  });
+
+  statusBar.update();
+}
+
+async function autoBootstrap(
+  binaryManager: BinaryManager,
+  client: DaemonClient,
+  sidebarProvider: HatchSidebarProvider,
+  statusBar: HatchStatusBar,
+): Promise<void> {
+  let binary = await binaryManager.findBinary();
+  if (!binary) {
+    try {
+      binary = await binaryManager.ensureBinary();
+    } catch {
       return;
     }
+  }
 
-    const running = await client.isRunning();
-    if (!running) {
-      const { exec } = require('child_process');
+  const fs = require('fs');
+  const platform = os.platform();
+  let needsSetup = false;
+  if (platform === 'darwin') {
+    needsSetup = !fs.existsSync('/etc/resolver/test');
+  } else if (platform === 'linux') {
+    needsSetup = !fs.existsSync('/etc/systemd/resolved.conf.d/hatch.conf');
+  } else {
+    needsSetup = !fs.existsSync(path.join(os.homedir(), '.hatch', '.setup-done'));
+  }
+
+  if (needsSetup) {
+    const { exec } = require('child_process');
+    let setupCmd: string;
+    if (platform === 'darwin') {
+      setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+    } else if (platform === 'linux') {
+      setupCmd = `pkexec "${binary}" setup`;
+    } else {
+      setupCmd = `powershell -Command "Start-Process '${binary}' -ArgumentList 'setup' -Verb RunAs -Wait"`;
+    }
+
+    try {
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Setting up Hatch...' },
+        () => new Promise<void>((resolve, reject) => {
+          exec(setupCmd, (err: Error | null) => {
+            if (err) { reject(err); } else { resolve(); }
+          });
+        })
+      );
+    } catch {
+      return;
+    }
+  }
+
+  const running = await client.isRunning();
+  if (!running) {
+    const { exec } = require('child_process');
+    await new Promise<void>((resolve) => {
       exec(`"${binary}" start`, () => {
         setTimeout(() => {
           sidebarProvider.refresh();
           statusBar.update();
+          resolve();
         }, 2000);
       });
-    }
-  });
-
-  statusBar.update();
-  suggestMapping(client);
+    });
+  } else {
+    sidebarProvider.refresh();
+    statusBar.update();
+  }
 }
 
 export function deactivate(): void {}
