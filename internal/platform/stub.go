@@ -17,3 +17,4 @@ func (s *Stub) SetupPortForward(from, to int) error    { return fmt.Errorf("plat
 func (s *Stub) TeardownPortForward(from, to int) error { return fmt.Errorf("platform not supported") }
 func (s *Stub) InstallDaemon(bin, sock string) error   { return fmt.Errorf("platform not supported") }
 func (s *Stub) UninstallDaemon() error                 { return fmt.Errorf("platform not supported") }
+func (s *Stub) InstallCA(certPath string) error        { return fmt.Errorf("platform not supported") }

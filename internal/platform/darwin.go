@@ -181,3 +181,12 @@ func (d *Darwin) UninstallDaemon() error {
 	os.Remove(plistPath)
 	return nil
 }
+
+func (d *Darwin) InstallCA(certPath string) error {
+	cmd := exec.Command("security", "add-trusted-cert", "-d", "-r", "trustRoot",
+		"-k", "/Library/Keychains/System.keychain", certPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("security add-trusted-cert: %s: %w", string(out), err)
+	}
+	return nil
+}

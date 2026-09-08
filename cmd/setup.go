@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/kingsleyocran/hatch/internal/config"
@@ -60,6 +61,13 @@ var setupCmd = &cobra.Command{
 			}
 		}
 		fmt.Println("  ✓ Local CA initialized")
+
+		fmt.Println("  Installing CA into system trust store...")
+		if err := plat.InstallCA(filepath.Join(config.Dir(), "ca-cert.pem")); err != nil {
+			fmt.Printf("  ⚠ CA trust install failed: %v\n", err)
+		} else {
+			fmt.Println("  ✓ CA trusted by system")
+		}
 
 		if err := config.Save(cfg, config.DefaultPath()); err != nil {
 			return fmt.Errorf("save config: %w", err)

@@ -78,6 +78,14 @@ func (w *Windows) UninstallDaemon() error {
 	return nil
 }
 
+func (w *Windows) InstallCA(certPath string) error {
+	cmd := exec.Command("certutil", "-addstore", "Root", certPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("certutil: %s: %w", string(out), err)
+	}
+	return nil
+}
+
 func hostsFilePath() string {
 	return filepath.Join(os.Getenv("SYSTEMROOT"), "System32", "drivers", "etc", "hosts")
 }
