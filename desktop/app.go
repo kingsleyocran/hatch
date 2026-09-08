@@ -158,6 +158,16 @@ func (a *App) IsDaemonRunning() bool {
 }
 
 func (a *App) StartDaemon() string {
+	plist := "/Library/LaunchDaemons/com.hatch.daemon.plist"
+	if _, err := os.Stat(plist); err == nil {
+		cmd := exec.Command("launchctl", "kickstart", "system/com.hatch.daemon")
+		if _, err := cmd.CombinedOutput(); err == nil {
+			return ""
+		}
+		cmd = exec.Command("launchctl", "start", "com.hatch.daemon")
+		cmd.CombinedOutput()
+		return ""
+	}
 	binary := filepath.Join(os.Getenv("HOME"), ".hatch", "bin", "hatch")
 	if _, err := os.Stat(binary); err != nil {
 		return "hatch binary not found"

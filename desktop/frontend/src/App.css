@@ -183,7 +183,7 @@ body {
 .empty { padding: 20px; text-align: center; color: #4b5563; font-size: 12.5px; }
 
 /* Settings */
-.settings { padding: 0 0 16px; }
+.settings { padding: 0 12px 16px; }
 .setting-row {
   display: flex;
   align-items: center;
@@ -232,7 +232,7 @@ body {
 .danger-btn:hover { background: #4b1a22; }
 
 /* Help */
-.help { padding: 0 0 16px; }
+.help { padding: 0 12px 16px; }
 .help-card { font-size: 13px; line-height: 1.6; }
 .help-card pre {
   background: #060E1A;
