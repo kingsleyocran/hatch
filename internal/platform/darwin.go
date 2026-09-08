@@ -125,6 +125,7 @@ func (d *Darwin) TeardownPortForward(fromPort, toPort int) error {
 }
 
 func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
+	hatchDir := filepath.Dir(sockPath)
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -137,6 +138,11 @@ func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
         <string>start</string>
         <string>--foreground</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HATCH_DIR</key>
+        <string>%s</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -146,7 +152,7 @@ func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
     <key>StandardErrorPath</key>
     <string>/tmp/hatch.stderr.log</string>
 </dict>
-</plist>`, binaryPath)
+</plist>`, binaryPath, hatchDir)
 }
 
 func (d *Darwin) InstallDaemon(binaryPath, sockPath string) error {

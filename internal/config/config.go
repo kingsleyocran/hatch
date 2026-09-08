@@ -34,6 +34,9 @@ func (c *Config) CertsDir() string {
 }
 
 func Dir() string {
+	if v := os.Getenv("HATCH_DIR"); v != "" {
+		return v
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".hatch")
 }
