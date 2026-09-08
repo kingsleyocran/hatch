@@ -150,12 +150,12 @@ func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
 }
 
 func (d *Darwin) InstallDaemon(binaryPath, sockPath string) error {
-	plistDir := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents")
-	if err := os.MkdirAll(plistDir, 0755); err != nil {
-		return err
-	}
+	// Unload existing first
+	exec.Command("launchctl", "unload", "/Library/LaunchDaemons/com.hatch.daemon.plist").CombinedOutput()
+	exec.Command("launchctl", "unload", filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist")).CombinedOutput()
+	os.Remove(filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist"))
 
-	plistPath := filepath.Join(plistDir, "com.hatch.daemon.plist")
+	plistPath := "/Library/LaunchDaemons/com.hatch.daemon.plist"
 	content := d.launchdPlist(binaryPath, sockPath)
 
 	if err := os.WriteFile(plistPath, []byte(content), 0644); err != nil {
@@ -171,11 +171,8 @@ func (d *Darwin) InstallDaemon(binaryPath, sockPath string) error {
 }
 
 func (d *Darwin) UninstallDaemon() error {
-	plistPath := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist")
-
-	cmd := exec.Command("launchctl", "unload", plistPath)
-	cmd.CombinedOutput()
-
+	plistPath := "/Library/LaunchDaemons/com.hatch.daemon.plist"
+	exec.Command("launchctl", "unload", plistPath).CombinedOutput()
 	os.Remove(plistPath)
 	return nil
 }
