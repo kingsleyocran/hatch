@@ -9,18 +9,20 @@ install: build
 	cp hatch ~/.hatch/bin/hatch
 	chmod +x ~/.hatch/bin/hatch
 
-clean:
+clean: build
 	sudo pkill -9 -f "hatch start" 2>/dev/null || true
 	sudo launchctl bootout system/com.hatch.daemon 2>/dev/null || true
 	sudo rm -f /Library/LaunchDaemons/com.hatch.daemon.plist
 	sudo rm -f /etc/resolver/test
 	sudo security delete-certificate -c "Hatch Local Development CA" /Library/Keychains/System.keychain 2>/dev/null || true
 	rm -rf ~/.hatch /usr/local/var/hatch
-	@echo "CLEAN"
+	mkdir -p ~/.hatch/bin
+	cp hatch ~/.hatch/bin/hatch
+	chmod +x ~/.hatch/bin/hatch
+	@echo "CLEAN — binary rebuilt at ~/.hatch/bin/hatch"
 
 setup: install
 	sudo ~/.hatch/bin/hatch setup
 
 dev: install
-	cd vscode-extension && npm run compile
 	@echo "Ready. Press F5 in VSCode."
