@@ -176,6 +176,11 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isWebSocketUpgrade(r) {
+		proxyWebSocket(w, r, rt.port)
+		return
+	}
+
 	if rt.https && r.TLS == nil {
 		target := "https://" + r.Host + r.URL.RequestURI()
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
@@ -184,11 +189,6 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !rt.alive {
 		rt.stopped.ServeHTTP(w, r)
-		return
-	}
-
-	if isWebSocketUpgrade(r) {
-		proxyWebSocket(w, r, rt.port)
 		return
 	}
 
