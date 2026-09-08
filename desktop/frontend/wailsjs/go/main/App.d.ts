@@ -14,6 +14,8 @@ export function IsDaemonRunning():Promise<boolean>;
 
 export function RemoveDomain(arg1:string):Promise<string>;
 
+export function ScanPorts():Promise<Array<main.PortInfo>>;
+
 export function SetConfig(arg1:string,arg2:string):Promise<string>;
 
 export function StartDaemon():Promise<string>;

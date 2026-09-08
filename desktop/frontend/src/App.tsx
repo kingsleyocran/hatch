@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { GetDomains, GetStatus, AddDomain, RemoveDomain, GetConfig, SetConfig, IsDaemonRunning, StartDaemon, StopDaemon } from '../wailsjs/go/main/App';
+import { GetDomains, GetStatus, AddDomain, RemoveDomain, GetConfig, SetConfig, IsDaemonRunning, StartDaemon, StopDaemon, ScanPorts } from '../wailsjs/go/main/App';
 import logoSvg from './assets/logo.svg';
 import './App.css';
 
 type Domain = { domain: string; port: number; dir: string; alive: boolean; https: boolean };
 type Status = { running: boolean; uptime: string; domain_count: number; active_count: number };
 type Config = { default_tld: string; auto_https: boolean; daemon_port: number; https_port: number; dns_port: number };
+type PortInfo = { port: number; name: string; process: string; type: string; dir: string };
 type View = 'domains' | 'settings' | 'quickstart';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [config, setConfigState] = useState<Config | null>(null);
   const [daemonRunning, setDaemonRunning] = useState(false);
+  const [ports, setPorts] = useState<PortInfo[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const refresh = async () => {
@@ -22,6 +24,7 @@ function App() {
     if (running) {
       setDomains(await GetDomains());
       setStatus(await GetStatus());
+      setPorts(await ScanPorts());
     }
     setConfigState(await GetConfig());
   };
@@ -68,6 +71,7 @@ function App() {
         {view === 'domains' && (
           <DomainsView
             domains={domains}
+            ports={ports}
             config={config}
             daemonRunning={daemonRunning}
             onRemove={handleRemove}
@@ -115,8 +119,8 @@ function App() {
   );
 }
 
-function DomainsView({ domains, config, daemonRunning, onRemove, onRefresh, onShowAdd, onStartDaemon }: {
-  domains: Domain[]; config: Config | null; daemonRunning: boolean;
+function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefresh, onShowAdd, onStartDaemon }: {
+  domains: Domain[]; ports: PortInfo[]; config: Config | null; daemonRunning: boolean;
   onRemove: (d: string) => void; onRefresh: () => void; onShowAdd: () => void; onStartDaemon: () => void;
 }) {
   const [tab, setTab] = useState<'mapped' | 'ports'>('mapped');
@@ -172,10 +176,27 @@ function DomainsView({ domains, config, daemonRunning, onRemove, onRefresh, onSh
 
       {tab === 'ports' && (
         <div className="card-list">
-          <div className="empty-state">
-            <p>Port scanning coming soon.</p>
-            <p className="muted">Use <code>hatch scan</code> in the terminal for now.</p>
-          </div>
+          {ports.length === 0 ? (
+            <div className="empty-state">
+              <p>No unmapped ports detected.</p>
+            </div>
+          ) : (
+            ports.map(p => (
+              <div className="card" key={p.port}>
+                <div className="card-row">
+                  <span className="dot dot-amber" />
+                  <div className="card-info">
+                    <span className="card-title">:{p.port} {p.name}</span>
+                    <span className="card-sub">{[p.process, p.type].filter(Boolean).join(' · ')}</span>
+                    {p.dir && <span className="card-dir">{p.dir}</span>}
+                  </div>
+                  <div className="card-actions always-show">
+                    <button className="act-btn act-add" onClick={onShowAdd} title="Map to domain">+</button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

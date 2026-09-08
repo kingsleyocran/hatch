@@ -40,6 +40,26 @@ export namespace main {
 	        this.https = source["https"];
 	    }
 	}
+	export class PortInfo {
+	    port: number;
+	    name: string;
+	    process: string;
+	    type: string;
+	    dir: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PortInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.port = source["port"];
+	        this.name = source["name"];
+	        this.process = source["process"];
+	        this.type = source["type"];
+	        this.dir = source["dir"];
+	    }
+	}
 	export class StatusInfo {
 	    running: boolean;
 	    uptime: string;

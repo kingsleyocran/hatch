@@ -26,6 +26,10 @@ export function RemoveDomain(arg1) {
   return window['go']['main']['App']['RemoveDomain'](arg1);
 }
 
+export function ScanPorts() {
+  return window['go']['main']['App']['ScanPorts']();
+}
+
 export function SetConfig(arg1, arg2) {
   return window['go']['main']['App']['SetConfig'](arg1, arg2);
 }
