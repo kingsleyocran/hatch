@@ -158,23 +158,14 @@ func (a *App) IsDaemonRunning() bool {
 }
 
 func (a *App) StartDaemon() string {
-	plist := "/Library/LaunchDaemons/com.hatch.daemon.plist"
-	if _, err := os.Stat(plist); err == nil {
-		cmd := exec.Command("launchctl", "kickstart", "system/com.hatch.daemon")
-		if _, err := cmd.CombinedOutput(); err == nil {
-			return ""
-		}
-		cmd = exec.Command("launchctl", "start", "com.hatch.daemon")
-		cmd.CombinedOutput()
-		return ""
-	}
-	binary := filepath.Join(os.Getenv("HOME"), ".hatch", "bin", "hatch")
-	if _, err := os.Stat(binary); err != nil {
-		return "hatch binary not found"
-	}
-	cmd := exec.Command(binary, "start")
+	cmd := exec.Command("osascript", "-e",
+		`do shell script "launchctl kickstart system/com.hatch.daemon 2>/dev/null || launchctl start com.hatch.daemon" with prompt "Hatch needs to start the daemon service." with administrator privileges`)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return string(out)
+		binary := filepath.Join(os.Getenv("HOME"), ".hatch", "bin", "hatch")
+		fallback := exec.Command(binary, "start")
+		if out2, err2 := fallback.CombinedOutput(); err2 != nil {
+			return string(out) + " " + string(out2)
+		}
 	}
 	return ""
 }
