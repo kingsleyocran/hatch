@@ -99,19 +99,17 @@ export class BinaryManager {
       return existing;
     }
 
-    const choice = await vscode.window.showWarningMessage(
-      'Hatch CLI not found. Download it now?',
-      'Download',
-      'Install Manually'
+    const choice = await vscode.window.showInformationMessage(
+      'Hatch CLI not found. It will be downloaded automatically.',
+      'Download Now',
+      'Cancel'
     );
 
-    if (choice === 'Download') {
-      return this.downloadBinary();
+    if (choice === 'Cancel' || !choice) {
+      throw new Error('Hatch CLI not installed');
     }
 
-    const installUrl = `https://github.com/${GITHUB_REPO}#installation`;
-    vscode.env.openExternal(vscode.Uri.parse(installUrl));
-    throw new Error('Hatch CLI not installed');
+    return this.downloadBinary();
   }
 
   private fetchJSON(url: string): Promise<Record<string, unknown>> {

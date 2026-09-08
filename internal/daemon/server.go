@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -26,10 +27,15 @@ func NewServer(d *Daemon, sockPath string) *Server {
 func (s *Server) Start() error {
 	os.Remove(s.sockPath)
 
+	if err := os.MkdirAll(filepath.Dir(s.sockPath), 0755); err != nil {
+		return err
+	}
+
 	ln, err := net.Listen("unix", s.sockPath)
 	if err != nil {
 		return err
 	}
+	os.Chmod(s.sockPath, 0666)
 	s.listener = ln
 
 	s.wg.Add(1)

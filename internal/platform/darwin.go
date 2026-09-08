@@ -60,9 +60,9 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 	rule := d.pfctlRule(fromPort, toPort)
 
 	existing, _ := os.ReadFile(hatchPfConf)
-	if !strings.Contains(string(existing), fmt.Sprintf("port %d", fromPort)) {
-		content := string(existing) + rule
-		if err := os.WriteFile(hatchPfConf, []byte(content), 0644); err != nil {
+	existingStr := string(existing)
+	if !strings.Contains(existingStr, fmt.Sprintf("port %d ->", fromPort)) {
+		if err := os.WriteFile(hatchPfConf, []byte(existingStr+rule), 0644); err != nil {
 			return fmt.Errorf("write pf rules: %w", err)
 		}
 	}
@@ -71,8 +71,26 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 	pfStr := string(pfConf)
 	needsUpdate := false
 
-	if !strings.Contains(pfStr, "anchor \"com.hatch\"") {
-		pfStr = pfStr + "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n"
+	if !strings.Contains(pfStr, "rdr-anchor \"com.hatch\"") {
+		rdrLine := "rdr-anchor \"com.hatch\""
+		loadLine := "load anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\""
+
+		// rdr-anchor must appear with other rdr-anchors, before filter anchors
+		if idx := strings.Index(pfStr, "rdr-anchor \"com.apple"); idx >= 0 {
+			endOfLine := strings.Index(pfStr[idx:], "\n")
+			if endOfLine >= 0 {
+				insertAt := idx + endOfLine + 1
+				pfStr = pfStr[:insertAt] + rdrLine + "\n" + pfStr[insertAt:]
+			}
+		} else {
+			pfStr = pfStr + "\n" + rdrLine + "\n"
+		}
+
+		// load anchor goes at the end
+		if !strings.Contains(pfStr, loadLine) {
+			pfStr = pfStr + loadLine + "\n"
+		}
+
 		needsUpdate = true
 	}
 
@@ -98,7 +116,7 @@ func (d *Darwin) TeardownPortForward(fromPort, toPort int) error {
 
 	pfConf, err := os.ReadFile("/etc/pf.conf")
 	if err == nil {
-		cleaned := strings.Replace(string(pfConf), "\nanchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n", "", 1)
+		cleaned := strings.Replace(string(pfConf), "\nrdr-anchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n", "", 1)
 		os.WriteFile("/etc/pf.conf", []byte(cleaned), 0644)
 		exec.Command("pfctl", "-f", "/etc/pf.conf").Run()
 	}
@@ -107,6 +125,7 @@ func (d *Darwin) TeardownPortForward(fromPort, toPort int) error {
 }
 
 func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
+	hatchDir := filepath.Dir(sockPath)
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -119,6 +138,11 @@ func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
         <string>start</string>
         <string>--foreground</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HATCH_DIR</key>
+        <string>%s</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -128,16 +152,15 @@ func (d *Darwin) launchdPlist(binaryPath, sockPath string) string {
     <key>StandardErrorPath</key>
     <string>/tmp/hatch.stderr.log</string>
 </dict>
-</plist>`, binaryPath)
+</plist>`, binaryPath, hatchDir)
 }
 
 func (d *Darwin) InstallDaemon(binaryPath, sockPath string) error {
-	plistDir := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents")
-	if err := os.MkdirAll(plistDir, 0755); err != nil {
-		return err
-	}
+	exec.Command("launchctl", "unload", "/Library/LaunchDaemons/com.hatch.daemon.plist").CombinedOutput()
+	exec.Command("launchctl", "unload", filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist")).CombinedOutput()
+	os.Remove(filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist"))
 
-	plistPath := filepath.Join(plistDir, "com.hatch.daemon.plist")
+	plistPath := "/Library/LaunchDaemons/com.hatch.daemon.plist"
 	content := d.launchdPlist(binaryPath, sockPath)
 
 	if err := os.WriteFile(plistPath, []byte(content), 0644); err != nil {
@@ -153,11 +176,17 @@ func (d *Darwin) InstallDaemon(binaryPath, sockPath string) error {
 }
 
 func (d *Darwin) UninstallDaemon() error {
-	plistPath := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.hatch.daemon.plist")
-
-	cmd := exec.Command("launchctl", "unload", plistPath)
-	cmd.CombinedOutput()
-
+	plistPath := "/Library/LaunchDaemons/com.hatch.daemon.plist"
+	exec.Command("launchctl", "unload", plistPath).CombinedOutput()
 	os.Remove(plistPath)
+	return nil
+}
+
+func (d *Darwin) InstallCA(certPath string) error {
+	cmd := exec.Command("security", "add-trusted-cert", "-d", "-r", "trustRoot",
+		"-k", "/Library/Keychains/System.keychain", certPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("security add-trusted-cert: %s: %w", string(out), err)
+	}
 	return nil
 }

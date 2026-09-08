@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,7 +45,14 @@ func (m *Manager) AddRouteHTTPS(domain string, port int, https bool) {
 	defer m.mu.Unlock()
 
 	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
-	rp := httputil.NewSingleHostReverseProxy(target)
+	rp := &httputil.ReverseProxy{
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(target)
+			pr.Out.Host = target.Host
+		},
+		FlushInterval: -1,
+	}
+
 	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		m.mu.RLock()
 		rt := m.routes[domain]
@@ -110,6 +119,7 @@ func (m *Manager) Start(addr string) error {
 		return err
 	}
 
+	m.server.SetKeepAlivesEnabled(false)
 	go m.server.Serve(ln)
 	return nil
 }
@@ -177,5 +187,102 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isWebSocketUpgrade(r) {
+		proxyWebSocket(w, r, rt.port)
+		return
+	}
+
 	rt.proxy.ServeHTTP(w, r)
 }
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
+	upstream, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 5*time.Second)
+	if err != nil {
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		return
+	}
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		upstream.Close()
+		http.Error(w, "hijack not supported", http.StatusInternalServerError)
+		return
+	}
+
+	client, brw, err := hj.Hijack()
+	if err != nil {
+		upstream.Close()
+		return
+	}
+
+	targetHost := fmt.Sprintf("127.0.0.1:%d", port)
+	fmt.Fprintf(upstream, "%s %s HTTP/1.1\r\n", r.Method, r.RequestURI)
+	fmt.Fprintf(upstream, "Host: %s\r\n", targetHost)
+	for k, vs := range r.Header {
+		if strings.EqualFold(k, "Host") {
+			continue
+		}
+		for _, v := range vs {
+			if strings.EqualFold(k, "Origin") {
+				fmt.Fprintf(upstream, "%s: http://%s\r\n", k, targetHost)
+			} else {
+				fmt.Fprintf(upstream, "%s: %s\r\n", k, v)
+			}
+		}
+	}
+	fmt.Fprintf(upstream, "\r\n")
+
+	reader := bufio.NewReader(upstream)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			client.Close()
+			upstream.Close()
+			return
+		}
+		client.Write([]byte(line))
+		if line == "\r\n" {
+			break
+		}
+	}
+
+	done := make(chan bool, 2)
+	go func() {
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := reader.Read(buf)
+			if n > 0 {
+				client.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+		done <- true
+	}()
+	go func() {
+		if brw.Reader.Buffered() > 0 {
+			p, _ := brw.Reader.Peek(brw.Reader.Buffered())
+			upstream.Write(p)
+		}
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := client.Read(buf)
+			if n > 0 {
+				upstream.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+		done <- true
+	}()
+	<-done
+	client.Close()
+	upstream.Close()
+}
+
