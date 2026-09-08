@@ -464,3 +464,10 @@ body {
 .card-col .card-badges {
   padding-left: 18px;
 }
+
+.setting-tld {
+  height: auto;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border-left: none;
+}

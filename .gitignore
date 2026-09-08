@@ -38,6 +38,15 @@ vscode-extension/*.vsix
 # Certificates
 certs/
 
+# Website (separate repo)
+website/
+.next/
+
+# Desktop app build output
+desktop/build/bin/
+desktop/frontend/node_modules/
+desktop/frontend/dist/
+
 # Environment
 .env
 .env.*

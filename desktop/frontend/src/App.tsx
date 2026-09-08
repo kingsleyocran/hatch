@@ -276,24 +276,31 @@ function SettingsView({ config, status, daemonRunning, onConfigChange, onStopDae
   config: Config | null; status: Status | null; daemonRunning: boolean;
   onConfigChange: (k: string, v: string) => void; onStopDaemon: () => void;
 }) {
+  const [tldOpen, setTldOpen] = useState(false);
+  const tlds = ['test', 'local', 'localhost', 'dev', 'internal'];
+  const currentTld = config?.default_tld || 'test';
+
   return (
     <div className="settings-view">
       <div className="section-label">General</div>
       <div className="card">
         <div className="setting-row">
           <span>Default TLD</span>
-          <select value={config?.default_tld || 'test'} onChange={e => onConfigChange('default_tld', e.target.value)}>
-            <option value="test">.test</option>
-            <option value="local">.local</option>
-            <option value="localhost">.localhost</option>
-            <option value="dev">.dev</option>
-            <option value="internal">.internal</option>
-          </select>
+          <div className="tld-picker">
+            <button className="tld-btn setting-tld" onClick={() => setTldOpen(!tldOpen)}>.{currentTld} ▾</button>
+            {tldOpen && (
+              <div className="tld-dropdown">
+                {tlds.map(t => (
+                  <button key={t} className={`tld-option ${t === currentTld ? 'active' : ''}`} onClick={() => { onConfigChange('default_tld', t); setTldOpen(false); }}>.{t}</button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="setting-row">
           <span>Auto HTTPS</span>
           <label className="toggle">
-            <input type="checkbox" checked={config?.auto_https || false} onChange={e => onConfigChange('auto_https', e.target.checked ? 'true' : 'false')} />
+            <input type="checkbox" checked={config?.auto_https ?? true} onChange={e => onConfigChange('auto_https', e.target.checked ? 'true' : 'false')} />
             <span className="toggle-slider" />
           </label>
         </div>
