@@ -56,6 +56,7 @@ function App() {
 
   return (
     <div className="app">
+      <div className="drag-bar" />
       <nav className="sidebar">
         <div className="logo">
           <img src="/src/assets/logo.svg" alt="Hatch" width="28" height="28" />
@@ -89,6 +90,8 @@ function App() {
 function Dashboard({ domains, daemonRunning, onAdd, onRemove, onRefresh }: {
   domains: Domain[]; daemonRunning: boolean; onAdd: () => void; onRemove: (d: string) => void; onRefresh: () => void;
 }) {
+  const [tab, setTab] = useState<'domains' | 'ports'>('domains');
+
   if (!daemonRunning) {
     return (
       <div className="center-content">
@@ -99,39 +102,60 @@ function Dashboard({ domains, daemonRunning, onAdd, onRemove, onRefresh }: {
     );
   }
 
-  const mapped = domains.filter(() => true);
-
   return (
     <div className="dashboard">
-      <div className="section-header">
-        <span>Mapped Domains</span>
-        <div className="section-actions">
-          <span className="badge">{mapped.length}</span>
-          <button className="icon-btn" onClick={onAdd} title="Add domain">+</button>
-          <button className="icon-btn" onClick={onRefresh} title="Refresh">&#x21BB;</button>
-        </div>
+      <div className="tabs">
+        <button className={`tab ${tab === 'domains' ? 'active' : ''}`} onClick={() => setTab('domains')}>Domains</button>
+        <button className={`tab ${tab === 'ports' ? 'active' : ''}`} onClick={() => setTab('ports')}>Ports</button>
       </div>
-      <div className="card-list">
-        {mapped.length === 0 && <div className="empty">No domains mapped yet. Click + to add one.</div>}
-        {mapped.map(d => (
-          <div className="card" key={d.domain}>
-            <div className="card-row">
-              <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
-              <div className="card-info">
-                <span className="card-title">{d.domain}</span>
-                <span className="card-sub">
-                  {d.https ? 'https' : 'http'}://{d.domain} &rarr; localhost:{d.port}
-                </span>
-                {d.dir && <span className="card-dir">{d.dir}</span>}
-              </div>
-              <div className="card-actions">
-                <button className="act-btn" onClick={() => window.open(`${d.https ? 'https' : 'http'}://${d.domain}`, '_blank')} title="Open">&#x2197;</button>
-                <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">&#x2715;</button>
-              </div>
+
+      {tab === 'domains' && (
+        <>
+          <div className="section-header">
+            <span>Mapped Domains</span>
+            <div className="section-actions">
+              <span className="badge">{domains.length}</span>
+              <button className="icon-btn" onClick={onAdd} title="Add domain">+</button>
+              <button className="icon-btn" onClick={onRefresh} title="Refresh">↻</button>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="card-list">
+            {domains.length === 0 && <div className="empty">No domains mapped yet. Click + to add one.</div>}
+            {domains.map(d => (
+              <div className="card" key={d.domain}>
+                <div className="card-row">
+                  <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
+                  <div className="card-info">
+                    <span className="card-title">{d.domain}</span>
+                    <span className="card-sub">
+                      {d.https ? 'https' : 'http'}://{d.domain} → localhost:{d.port}
+                    </span>
+                    {d.dir && <span className="card-dir">{d.dir}</span>}
+                  </div>
+                  <div className="card-actions">
+                    <button className="act-btn" onClick={() => window.open(`${d.https ? 'https' : 'http'}://${d.domain}`, '_blank')} title="Open">↗</button>
+                    <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">✕</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === 'ports' && (
+        <>
+          <div className="section-header">
+            <span>Running Ports</span>
+            <div className="section-actions">
+              <button className="icon-btn" onClick={onRefresh} title="Refresh">↻</button>
+            </div>
+          </div>
+          <div className="card-list">
+            <div className="empty">Port scanning available in CLI: <code>hatch scan</code></div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

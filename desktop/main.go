@@ -6,6 +6,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
 //go:embed all:frontend/dist
@@ -24,7 +25,22 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 10, G: 22, B: 40, A: 1},
-		OnStartup:        app.startup,
+		Frameless:        false,
+		Mac: &mac.Options{
+			TitleBar: &mac.TitleBar{
+				TitlebarAppearsTransparent: true,
+				HideTitle:                 true,
+				HideTitleBar:              false,
+				FullSizeContent:           true,
+			},
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  false,
+			About: &mac.AboutInfo{
+				Title:   "Hatch",
+				Message: "Local domains for your dev servers",
+			},
+		},
+		OnStartup: app.startup,
 		Bind: []interface{}{
 			app,
 		},
