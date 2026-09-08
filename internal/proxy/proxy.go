@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -224,16 +223,34 @@ func (m *Manager) proxyWebSocket(w http.ResponseWriter, r *http.Request, port in
 		return
 	}
 
-	reqLine := fmt.Sprintf("%s %s HTTP/1.1\r\n", r.Method, r.RequestURI)
-	upstream.Write([]byte(reqLine))
-	r.Header.Set("Host", targetAddr)
-	r.Header.Write(upstream)
-	upstream.Write([]byte("\r\n"))
+	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf("%s %s HTTP/1.1\r\n", r.Method, r.RequestURI))
+	buf.WriteString(fmt.Sprintf("Host: %s\r\n", targetAddr))
+	for key, vals := range r.Header {
+		if strings.EqualFold(key, "Host") {
+			continue
+		}
+		for _, val := range vals {
+			buf.WriteString(fmt.Sprintf("%s: %s\r\n", key, val))
+		}
+	}
+	buf.WriteString("\r\n")
+	upstream.Write([]byte(buf.String()))
 
-	go func() {
-		io.Copy(upstream, client)
-		upstream.Close()
-	}()
-	io.Copy(client, upstream)
-	client.Close()
+	go copyConn(upstream, client)
+	copyConn(client, upstream)
+}
+
+func copyConn(dst, src net.Conn) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := src.Read(buf)
+		if n > 0 {
+			dst.Write(buf[:n])
+		}
+		if err != nil {
+			dst.Close()
+			return
+		}
+	}
 }
