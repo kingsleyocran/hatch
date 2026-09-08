@@ -72,7 +72,25 @@ func (d *Darwin) SetupPortForward(fromPort, toPort int) error {
 	needsUpdate := false
 
 	if !strings.Contains(pfStr, "rdr-anchor \"com.hatch\"") {
-		pfStr = pfStr + "\nrdr-anchor \"com.hatch\"\nload anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\"\n"
+		rdrLine := "rdr-anchor \"com.hatch\""
+		loadLine := "load anchor \"com.hatch\" from \"/etc/pf.anchors/com.hatch\""
+
+		// rdr-anchor must appear with other rdr-anchors, before filter anchors
+		if idx := strings.Index(pfStr, "rdr-anchor \"com.apple"); idx >= 0 {
+			endOfLine := strings.Index(pfStr[idx:], "\n")
+			if endOfLine >= 0 {
+				insertAt := idx + endOfLine + 1
+				pfStr = pfStr[:insertAt] + rdrLine + "\n" + pfStr[insertAt:]
+			}
+		} else {
+			pfStr = pfStr + "\n" + rdrLine + "\n"
+		}
+
+		// load anchor goes at the end
+		if !strings.Contains(pfStr, loadLine) {
+			pfStr = pfStr + loadLine + "\n"
+		}
+
 		needsUpdate = true
 	}
 
