@@ -239,7 +239,7 @@ function AddDomainModal({ defaultTLD, autoHTTPS, prefillPort, onAdd, onClose }: 
           <div className="domain-input-row">
             <input type="text" placeholder="myapp" value={name} onChange={e => setName(e.target.value)} autoFocus className="domain-name-input" />
             <div className="tld-picker">
-              <button className="tld-btn" onClick={() => setTldOpen(!tldOpen)}>.{tld}</button>
+              <button className="tld-btn" onClick={() => setTldOpen(!tldOpen)}>.{tld} ▾</button>
               {tldOpen && (
                 <div className="tld-dropdown">
                   {tlds.map(t => (
