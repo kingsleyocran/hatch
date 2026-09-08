@@ -357,3 +357,20 @@ body {
 .quickstart-view a { color: #B3D7FC; text-decoration: none; }
 .quickstart-view a:hover { text-decoration: underline; }
 .quickstart-view p { font-size: 13px; line-height: 1.6; }
+
+/* Toast */
+.toast-error {
+  position: fixed;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3b1219;
+  border: 1px solid #f8514933;
+  color: #f85149;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 300;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(-4px); } }

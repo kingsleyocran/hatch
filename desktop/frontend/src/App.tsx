@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetDomains, GetStatus, AddDomain, RemoveDomain, GetConfig, SetConfig, IsDaemonRunning, StartDaemon, StopDaemon, ScanPorts } from '../wailsjs/go/main/App';
+import { BrowserOpenURL } from '../wailsjs/runtime/runtime';
 import logoSvg from './assets/logo.svg';
 import './App.css';
 
@@ -35,15 +36,19 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const [error, setError] = useState('');
+
   const handleAdd = async (domain: string, port: number, https: boolean) => {
     const err = await AddDomain(domain, port, https);
-    if (err) alert(err);
+    if (err) {
+      setError(err);
+      setTimeout(() => setError(''), 3000);
+    }
     setShowAddModal(false);
     refresh();
   };
 
   const handleRemove = async (domain: string) => {
-    if (!confirm(`Remove ${domain}?`)) return;
     await RemoveDomain(domain);
     refresh();
   };
@@ -51,6 +56,7 @@ function App() {
   return (
     <div className="app">
       <div className="drag-bar" />
+      {error && <div className="toast-error">{error}</div>}
 
       <header className="top-bar">
         <div className="top-left">
@@ -164,7 +170,7 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
                     {d.dir && <span className="card-dir">{d.dir}</span>}
                   </div>
                   <div className="card-actions">
-                    <button className="act-btn" onClick={() => window.open(`${d.https ? 'https' : 'http'}://${d.domain}`, '_blank')} title="Open">↗</button>
+                    <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">↗</button>
                     <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">✕</button>
                   </div>
                 </div>
