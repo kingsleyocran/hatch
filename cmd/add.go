@@ -3,11 +3,14 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/kingsleyocran/hatch/internal/config"
 	"github.com/kingsleyocran/hatch/internal/daemon"
+	"github.com/kingsleyocran/hatch/internal/platform"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +49,31 @@ var addCmd = &cobra.Command{
 		proto := "http"
 		if useHTTPS {
 			proto = "https"
+			ensureCATrusted()
 		}
 		fmt.Printf("✓ %s → localhost:%d (%s)\n", domain, port, proto)
 		return nil
 	},
+}
+
+func ensureCATrusted() {
+	certPath := filepath.Join(config.Dir(), "ca-cert.pem")
+	if _, err := os.Stat(certPath); err != nil {
+		return
+	}
+
+	plat := platform.Current()
+	if err := plat.InstallCA(certPath); err != nil {
+		if plat.NeedsSudo() && os.Geteuid() != 0 {
+			fmt.Println("  Installing CA certificate (requires admin)...")
+			binary, _ := os.Executable()
+			sudoCmd := exec.Command("sudo", binary, "trust-ca")
+			sudoCmd.Stdin = os.Stdin
+			sudoCmd.Stdout = os.Stdout
+			sudoCmd.Stderr = os.Stderr
+			sudoCmd.Run()
+		}
+	}
 }
 
 func init() {

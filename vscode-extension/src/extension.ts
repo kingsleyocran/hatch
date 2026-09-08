@@ -68,6 +68,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         const proto = https ? 'https' : 'http';
         await client.add(domain, parseInt(portStr, 10), dir, https);
+        if (https) { await ensureCATrusted(binaryManager); }
         vscode.window.showInformationMessage(`Mapped ${proto}://${domain} to localhost:${portStr}`);
         sidebarProvider.refresh();
         statusBar.update();
@@ -205,6 +206,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         const proto = https ? 'https' : 'http';
         await client.add(domain, port, dir, https);
+        if (https) { await ensureCATrusted(binaryManager); }
         vscode.window.showInformationMessage(`Mapped ${proto}://${domain} to localhost:${port}`);
         sidebarProvider.refresh();
         statusBar.update();
@@ -352,6 +354,33 @@ async function autoBootstrap(
   } else {
     sidebarProvider.refresh();
     statusBar.update();
+  }
+}
+
+async function ensureCATrusted(binaryManager: BinaryManager): Promise<void> {
+  const binary = await binaryManager.findBinary();
+  if (!binary) return;
+
+  const platform = os.platform();
+  const { exec } = require('child_process');
+
+  let trustCmd: string;
+  if (platform === 'darwin') {
+    trustCmd = `osascript -e 'do shell script "HATCH_DIR=${path.join(os.homedir(), '.hatch')} ${binary} trust-ca" with prompt "Hatch needs to install a certificate authority so HTTPS works on your local domains." with administrator privileges'`;
+  } else if (platform === 'linux') {
+    trustCmd = `pkexec env HATCH_DIR=${path.join(os.homedir(), '.hatch')} "${binary}" trust-ca`;
+  } else {
+    trustCmd = `powershell -Command "Start-Process '${binary}' -ArgumentList 'trust-ca' -Verb RunAs -Wait"`;
+  }
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      exec(trustCmd, (err: Error | null) => {
+        if (err) { reject(err); } else { resolve(); }
+      });
+    });
+  } catch {
+    // User cancelled or failed — HTTPS will show browser warning
   }
 }
 

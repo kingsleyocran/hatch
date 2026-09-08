@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"nhooyr.io/websocket"
 )
 
 type route struct {
@@ -176,6 +177,11 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isWebSocketUpgrade(r) {
+		proxyWebSocket(w, r, rt.port)
+		return
+	}
+
 	if rt.https && r.TLS == nil {
 		target := "https://" + r.Host + r.URL.RequestURI()
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
@@ -187,11 +193,6 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isWebSocketUpgrade(r) {
-		proxyWebSocket(w, r, rt.port)
-		return
-	}
-
 	rt.proxy.ServeHTTP(w, r)
 }
 
@@ -200,89 +201,51 @@ func isWebSocketUpgrade(r *http.Request) bool {
 }
 
 func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
-	upstream, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 5*time.Second)
+	clientConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		InsecureSkipVerify: true,
+	})
 	if err != nil {
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
 		return
 	}
+	defer clientConn.CloseNow()
 
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		upstream.Close()
-		http.Error(w, "hijack not supported", http.StatusInternalServerError)
-		return
-	}
-
-	client, brw, err := hj.Hijack()
+	ctx := r.Context()
+	upstreamURL := fmt.Sprintf("ws://127.0.0.1:%d%s", port, r.URL.RequestURI())
+	upstreamConn, _, err := websocket.Dial(ctx, upstreamURL, nil)
 	if err != nil {
-		upstream.Close()
+		clientConn.Close(websocket.StatusBadGateway, "upstream unavailable")
 		return
 	}
+	defer upstreamConn.CloseNow()
 
-	targetHost := fmt.Sprintf("127.0.0.1:%d", port)
-	fmt.Fprintf(upstream, "%s %s HTTP/1.1\r\n", r.Method, r.RequestURI)
-	fmt.Fprintf(upstream, "Host: %s\r\n", targetHost)
-	for k, vs := range r.Header {
-		if strings.EqualFold(k, "Host") {
-			continue
-		}
-		for _, v := range vs {
-			if strings.EqualFold(k, "Origin") {
-				fmt.Fprintf(upstream, "%s: http://%s\r\n", k, targetHost)
-			} else {
-				fmt.Fprintf(upstream, "%s: %s\r\n", k, v)
-			}
-		}
-	}
-	fmt.Fprintf(upstream, "\r\n")
+	done := make(chan struct{}, 2)
 
-	reader := bufio.NewReader(upstream)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			client.Close()
-			upstream.Close()
-			return
-		}
-		client.Write([]byte(line))
-		if line == "\r\n" {
-			break
-		}
-	}
-
-	done := make(chan bool, 2)
 	go func() {
-		buf := make([]byte, 32*1024)
 		for {
-			n, err := reader.Read(buf)
-			if n > 0 {
-				client.Write(buf[:n])
-			}
+			typ, data, err := upstreamConn.Read(ctx)
 			if err != nil {
 				break
 			}
-		}
-		done <- true
-	}()
-	go func() {
-		if brw.Reader.Buffered() > 0 {
-			p, _ := brw.Reader.Peek(brw.Reader.Buffered())
-			upstream.Write(p)
-		}
-		buf := make([]byte, 32*1024)
-		for {
-			n, err := client.Read(buf)
-			if n > 0 {
-				upstream.Write(buf[:n])
-			}
-			if err != nil {
+			if err := clientConn.Write(ctx, typ, data); err != nil {
 				break
 			}
 		}
-		done <- true
+		done <- struct{}{}
 	}()
+
+	go func() {
+		for {
+			typ, data, err := clientConn.Read(ctx)
+			if err != nil {
+				break
+			}
+			if err := upstreamConn.Write(ctx, typ, data); err != nil {
+				break
+			}
+		}
+		done <- struct{}{}
+	}()
+
 	<-done
-	client.Close()
-	upstream.Close()
 }
 
