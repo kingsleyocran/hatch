@@ -23,9 +23,9 @@ function App() {
     const running = await IsDaemonRunning();
     setDaemonRunning(running);
     if (running) {
-      setDomains(await GetDomains());
+      setDomains((await GetDomains()) || []);
       setStatus(await GetStatus());
-      setPorts(await ScanPorts());
+      setPorts((await ScanPorts()) || []);
     }
     setConfigState(await GetConfig());
   };
