@@ -223,7 +223,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
         let setupCmd: string;
         if (platform === 'darwin') {
-          setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+          setupCmd = `osascript -e 'do shell script "${binary} setup" with prompt "Hatch needs to configure local DNS, install its background service, and set up a trusted certificate authority for HTTPS." with administrator privileges'`;
         } else if (platform === 'linux') {
           setupCmd = `pkexec "${binary}" setup`;
         } else {
@@ -298,7 +298,7 @@ async function autoBootstrap(
     const { exec } = require('child_process');
     let setupCmd: string;
     if (platform === 'darwin') {
-      setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+      setupCmd = `osascript -e 'do shell script "${binary} setup" with prompt "Hatch needs to configure local DNS, install its background service, and set up a trusted certificate authority for HTTPS." with administrator privileges'`;
     } else if (platform === 'linux') {
       setupCmd = `pkexec "${binary}" setup`;
     } else {
