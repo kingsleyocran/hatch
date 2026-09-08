@@ -25,7 +25,7 @@ body {
 }
 
 .logo { padding: 4px 0 12px; }
-.logo img { opacity: 0.9; filter: brightness(1.2); }
+.logo img { width: 28px; height: 28px; }
 
 .nav-btn {
   width: 36px;
