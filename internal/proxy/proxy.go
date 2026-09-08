@@ -205,7 +205,7 @@ func isWebSocketUpgrade(r *http.Request) bool {
 
 func (m *Manager) proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 	targetAddr := fmt.Sprintf("127.0.0.1:%d", port)
-	targetConn, err := net.DialTimeout("tcp", targetAddr, 5*time.Second)
+	upstream, err := net.DialTimeout("tcp", targetAddr, 5*time.Second)
 	if err != nil {
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
 		return
@@ -213,31 +213,27 @@ func (m *Manager) proxyWebSocket(w http.ResponseWriter, r *http.Request, port in
 
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		targetConn.Close()
-		http.Error(w, "websocket hijack failed", http.StatusInternalServerError)
+		upstream.Close()
+		http.Error(w, "hijack not supported", http.StatusInternalServerError)
 		return
 	}
 
-	clientConn, clientBuf, err := hj.Hijack()
+	client, _, err := hj.Hijack()
 	if err != nil {
-		targetConn.Close()
+		upstream.Close()
 		return
 	}
 
-	r.Host = targetAddr
-	r.Write(targetConn)
+	reqLine := fmt.Sprintf("%s %s HTTP/1.1\r\n", r.Method, r.RequestURI)
+	upstream.Write([]byte(reqLine))
+	r.Header.Set("Host", targetAddr)
+	r.Header.Write(upstream)
+	upstream.Write([]byte("\r\n"))
 
-	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(targetConn, clientBuf)
-		done <- struct{}{}
+		io.Copy(upstream, client)
+		upstream.Close()
 	}()
-	go func() {
-		io.Copy(clientConn, targetConn)
-		done <- struct{}{}
-	}()
-	<-done
-
-	clientConn.Close()
-	targetConn.Close()
+	io.Copy(client, upstream)
+	client.Close()
 }
