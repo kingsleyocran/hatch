@@ -285,7 +285,7 @@ export class HatchSidebarProvider implements vscode.WebviewViewProvider {
         justify-content: center;
         padding: 40px 20px;
         text-align: center;
-        min-height: 240px;
+        min-height: 100vh;
       }
       .setup-icon {
         font-size: 36px;
