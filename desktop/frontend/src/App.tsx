@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetDomains, GetStatus, AddDomain, RemoveDomain, GetConfig, SetConfig, IsDaemonRunning, StartDaemon, StopDaemon } from '../wailsjs/go/main/App';
+import logoSvg from './assets/logo.svg';
 import './App.css';
 
 type Domain = { domain: string; port: number; dir: string; alive: boolean; https: boolean };
@@ -59,7 +60,7 @@ function App() {
       <div className="drag-bar" />
       <nav className="sidebar">
         <div className="logo">
-          <img src="/src/assets/logo.svg" alt="Hatch" width="28" height="28" />
+          <img src={logoSvg} alt="Hatch" width="28" height="28" />
         </div>
         <button className={`nav-btn ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')} title="Dashboard">
           <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2V2zm7 0h5v5H9V2zm-7 7h5v5H2V9zm7 0h5v5H9V9z"/></svg>
