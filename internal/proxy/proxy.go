@@ -244,8 +244,9 @@ func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 			upstream.Close()
 			return
 		}
-		client.Write([]byte(line))
+		brw.WriteString(line)
 		if line == "\r\n" {
+			brw.Flush()
 			break
 		}
 	}
@@ -256,7 +257,8 @@ func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 		for {
 			n, err := reader.Read(buf)
 			if n > 0 {
-				client.Write(buf[:n])
+				brw.Write(buf[:n])
+				brw.Flush()
 			}
 			if err != nil {
 				break
