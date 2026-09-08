@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -154,6 +155,18 @@ func (a *App) SetConfig(key, value string) string {
 func (a *App) IsDaemonRunning() bool {
 	resp, err := a.send(request{Action: "ping"})
 	return err == nil && resp.OK
+}
+
+func (a *App) StartDaemon() string {
+	binary := filepath.Join(os.Getenv("HOME"), ".hatch", "bin", "hatch")
+	if _, err := os.Stat(binary); err != nil {
+		return "hatch binary not found"
+	}
+	cmd := exec.Command(binary, "start")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return string(out)
+	}
+	return ""
 }
 
 func (a *App) StopDaemon() string {

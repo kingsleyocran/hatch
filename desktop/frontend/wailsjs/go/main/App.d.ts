@@ -16,4 +16,6 @@ export function RemoveDomain(arg1:string):Promise<string>;
 
 export function SetConfig(arg1:string,arg2:string):Promise<string>;
 
+export function StartDaemon():Promise<string>;
+
 export function StopDaemon():Promise<string>;

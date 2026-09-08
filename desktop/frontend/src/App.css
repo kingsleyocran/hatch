@@ -104,6 +104,19 @@ body {
 .center-content h2 { font-size: 16px; margin: 16px 0 8px; }
 .muted { color: #6b7280; font-size: 13px; }
 .logo-img { opacity: 0.5; }
+.start-btn {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: #1a4731;
+  border: 1px solid #3fb95033;
+  border-radius: 6px;
+  color: #3fb950;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.start-btn:hover { background: #1f5c3d; }
 
 .section-header {
   display: flex;
@@ -170,7 +183,7 @@ body {
 .empty { padding: 20px; text-align: center; color: #4b5563; font-size: 12.5px; }
 
 /* Settings */
-.settings { padding: 4px 4px 16px; }
+.settings { padding: 0 0 16px; }
 .setting-row {
   display: flex;
   align-items: center;
@@ -219,7 +232,7 @@ body {
 .danger-btn:hover { background: #4b1a22; }
 
 /* Help */
-.help { padding: 4px 4px 16px; }
+.help { padding: 0 0 16px; }
 .help-card { font-size: 13px; line-height: 1.6; }
 .help-card pre {
   background: #060E1A;
