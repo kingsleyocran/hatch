@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -189,5 +191,53 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isWebSocketUpgrade(r) {
+		m.proxyWebSocket(w, r, rt.port)
+		return
+	}
+
 	rt.proxy.ServeHTTP(w, r)
+}
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+func (m *Manager) proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
+	targetAddr := fmt.Sprintf("127.0.0.1:%d", port)
+	targetConn, err := net.DialTimeout("tcp", targetAddr, 5*time.Second)
+	if err != nil {
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		return
+	}
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		targetConn.Close()
+		http.Error(w, "websocket hijack failed", http.StatusInternalServerError)
+		return
+	}
+
+	clientConn, clientBuf, err := hj.Hijack()
+	if err != nil {
+		targetConn.Close()
+		return
+	}
+
+	r.Host = targetAddr
+	r.Write(targetConn)
+
+	done := make(chan struct{}, 2)
+	go func() {
+		io.Copy(targetConn, clientBuf)
+		done <- struct{}{}
+	}()
+	go func() {
+		io.Copy(clientConn, targetConn)
+		done <- struct{}{}
+	}()
+	<-done
+
+	clientConn.Close()
+	targetConn.Close()
 }
