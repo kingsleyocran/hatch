@@ -170,11 +170,11 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
                     <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
                     <div className="card-info">
                       <span className="card-title">{d.domain}</span>
-                      <span className="card-sub">{'->'} localhost:{d.port}</span>
+                      <span className="card-sub">{d.https ? 'https' : 'http'}://{d.domain} → localhost:{d.port}</span>
                     </div>
                     <div className="card-actions">
-                      <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">Open</button>
-                      <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">{'×'}</button>
+                      <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">↗</button>
+                      <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">✕</button>
                     </div>
                   </div>
                   <div className="card-badges">
