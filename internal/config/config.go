@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"gopkg.in/yaml.v3"
 )
@@ -37,8 +38,15 @@ func Dir() string {
 	if v := os.Getenv("HATCH_DIR"); v != "" {
 		return v
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".hatch")
+	switch runtime.GOOS {
+	case "windows":
+		if pd := os.Getenv("PROGRAMDATA"); pd != "" {
+			return filepath.Join(pd, "hatch")
+		}
+		return `C:\ProgramData\hatch`
+	default:
+		return "/usr/local/var/hatch"
+	}
 }
 
 func DefaultPath() string {

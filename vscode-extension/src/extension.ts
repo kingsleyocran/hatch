@@ -7,7 +7,12 @@ import { HatchStatusBar } from './status-bar';
 import { BinaryManager } from './binary-manager';
 import { suggestMapping } from './auto-detect';
 
-const SOCKET_PATH = path.join(os.homedir(), '.hatch', 'hatch.sock');
+function getHatchDir(): string {
+  if (process.env.HATCH_DIR) { return process.env.HATCH_DIR; }
+  if (os.platform() === 'win32') { return path.join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'hatch'); }
+  return '/usr/local/var/hatch';
+}
+const SOCKET_PATH = path.join(getHatchDir(), 'hatch.sock');
 const POLL_INTERVAL = 5000;
 
 export function activate(context: vscode.ExtensionContext): void {
