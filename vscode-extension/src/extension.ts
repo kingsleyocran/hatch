@@ -192,11 +192,20 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!domain) return;
 
+      const useHttps = await vscode.window.showQuickPick(
+        [{ label: 'HTTPS', description: 'Recommended' },
+         { label: 'HTTP', description: 'No encryption' }],
+        { placeHolder: 'Enable HTTPS?' }
+      );
+      if (!useHttps) return;
+      const https = useHttps.label === 'HTTPS';
+
       const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
       try {
-        await client.add(domain, port, dir, false);
-        vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${port}`);
+        const proto = https ? 'https' : 'http';
+        await client.add(domain, port, dir, https);
+        vscode.window.showInformationMessage(`Mapped ${proto}://${domain} to localhost:${port}`);
         sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
