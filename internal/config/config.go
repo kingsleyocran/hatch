@@ -21,8 +21,8 @@ func Default() *Config {
 	return &Config{
 		DefaultTLD: "test",
 		AutoHTTPS:  false,
-		DaemonPort: 8443,
-		HTTPSPort:  8444,
+		DaemonPort: 80,
+		HTTPSPort:  443,
 		DNSPort:    15353,
 		LogLevel:   "info",
 		LogFile:    filepath.Join(Dir(), "hatch.log"),

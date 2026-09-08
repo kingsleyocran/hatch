@@ -46,19 +46,12 @@ var setupCmd = &cobra.Command{
 		}
 		fmt.Println("  ✓ DNS resolver configured")
 
-		fmt.Println("  Setting up port forwarding (80 → daemon)...")
-		if err := plat.SetupPortForward(80, cfg.DaemonPort); err != nil {
-			fmt.Printf("  ⚠ Port forwarding failed: %v (use http://domain:%d instead)\n", err, cfg.DaemonPort)
-		} else {
-			fmt.Println("  ✓ Port forwarding configured")
+		binary, _ := os.Executable()
+		fmt.Println("  Installing daemon service...")
+		if err := plat.InstallDaemon(binary, cfg.SocketPath()); err != nil {
+			return fmt.Errorf("install daemon: %w", err)
 		}
-
-		fmt.Println("  Setting up HTTPS port forwarding (443 → daemon)...")
-		if err := plat.SetupPortForward(443, cfg.HTTPSPort); err != nil {
-			fmt.Printf("  ⚠ HTTPS port forwarding failed: %v\n", err)
-		} else {
-			fmt.Println("  ✓ HTTPS port forwarding configured")
-		}
+		fmt.Println("  ✓ Daemon installed (binds port 80 directly)")
 
 		fmt.Println("  Initializing local Certificate Authority...")
 		if !htls.CAExists(config.Dir()) {
