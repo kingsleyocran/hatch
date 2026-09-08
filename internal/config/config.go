@@ -20,7 +20,7 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		DefaultTLD: "test",
-		AutoHTTPS:  false,
+		AutoHTTPS:  true,
 		DaemonPort: 80,
 		HTTPSPort:  443,
 		DNSPort:    15353,

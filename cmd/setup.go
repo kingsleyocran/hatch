@@ -74,6 +74,14 @@ var setupCmd = &cobra.Command{
 		}
 		fmt.Println("  ✓ Config saved")
 
+		// Fix ownership so user apps can write config
+		if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+			exec.Command("chown", "-R", sudoUser, config.Dir()).Run()
+		} else if hatchDir := os.Getenv("HATCH_DIR"); hatchDir != "" {
+			// Running via osascript — find owner from HATCH_DIR path
+			exec.Command("chown", "-R", filepath.Base(filepath.Dir(hatchDir)), hatchDir).Run()
+		}
+
 		fmt.Println("\n✓ Setup complete. The daemon will start automatically.")
 		return nil
 	},
