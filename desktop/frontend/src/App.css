@@ -374,3 +374,83 @@ body {
   animation: fadeIn 0.2s;
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(-4px); } }
+
+/* Domain Input Row */
+.domain-input-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid #2a3a5c;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0A1628;
+}
+.domain-name-input {
+  flex: 1;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.tld-picker { position: relative; }
+.tld-btn {
+  height: 100%;
+  padding: 0 12px;
+  background: #1a2744;
+  border: none;
+  border-left: 1px solid #2a3a5c;
+  color: #B3D7FC;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 70px;
+}
+.tld-btn:hover { background: #223456; }
+.tld-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: #0f1d32;
+  border: 1px solid #2a3a5c;
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 10;
+  min-width: 100px;
+  margin-bottom: 4px;
+}
+.tld-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: #e5e5e5;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.tld-option:hover { background: #1a2744; }
+.tld-option.active { color: #B3D7FC; background: #1a2744; }
+
+/* Card Badges */
+.card-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.status-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.sl-active { color: #3fb950; }
+.sl-stopped { color: #f85149; }
+.https-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  background: #1a4731;
+  color: #3fb950;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}

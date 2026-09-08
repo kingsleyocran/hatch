@@ -18,6 +18,7 @@ function App() {
   const [daemonRunning, setDaemonRunning] = useState(false);
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [prefillPort, setPrefillPort] = useState<number | null>(null);
 
   const refresh = async () => {
     const running = await IsDaemonRunning();
@@ -82,7 +83,8 @@ function App() {
             daemonRunning={daemonRunning}
             onRemove={handleRemove}
             onRefresh={refresh}
-            onShowAdd={() => setShowAddModal(true)}
+            onShowAdd={() => { setPrefillPort(null); setShowAddModal(true); }}
+            onShowAddPort={(port: number) => { setPrefillPort(port); setShowAddModal(true); }}
             onStartDaemon={async () => { await StartDaemon(); setTimeout(refresh, 2000); }}
           />
         )}
@@ -101,9 +103,10 @@ function App() {
       {showAddModal && (
         <AddDomainModal
           defaultTLD={config?.default_tld || 'test'}
-          autoHTTPS={config?.auto_https || false}
-          onAdd={handleAdd}
-          onClose={() => setShowAddModal(false)}
+          autoHTTPS={config?.auto_https ?? true}
+          prefillPort={prefillPort}
+          onAdd={(domain, port, https) => { handleAdd(domain, port, https); setPrefillPort(null); }}
+          onClose={() => { setShowAddModal(false); setPrefillPort(null); }}
         />
       )}
 
@@ -125,9 +128,9 @@ function App() {
   );
 }
 
-function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefresh, onShowAdd, onStartDaemon }: {
+function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefresh, onShowAdd, onShowAddPort, onStartDaemon }: {
   domains: Domain[]; ports: PortInfo[]; config: Config | null; daemonRunning: boolean;
-  onRemove: (d: string) => void; onRefresh: () => void; onShowAdd: () => void; onStartDaemon: () => void;
+  onRemove: (d: string) => void; onRefresh: () => void; onShowAdd: () => void; onShowAddPort: (port: number) => void; onStartDaemon: () => void;
 }) {
   const [tab, setTab] = useState<'mapped' | 'ports'>('mapped');
 
@@ -166,8 +169,11 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
                   <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
                   <div className="card-info">
                     <span className="card-title">{d.domain}</span>
-                    <span className="card-sub">{d.https ? 'https' : 'http'}://{d.domain} → localhost:{d.port}</span>
-                    {d.dir && <span className="card-dir">{d.dir}</span>}
+                    <span className="card-sub">→ localhost:{d.port}</span>
+                  </div>
+                  <div className="card-badges">
+                    <span className={`status-label ${d.alive ? 'sl-active' : 'sl-stopped'}`}>{d.alive ? 'Active' : 'Stopped'}</span>
+                    {d.https && <span className="https-badge">HTTPS</span>}
                   </div>
                   <div className="card-actions">
                     <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">↗</button>
@@ -197,7 +203,7 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
                     {p.dir && <span className="card-dir">{p.dir}</span>}
                   </div>
                   <div className="card-actions always-show">
-                    <button className="act-btn act-add" onClick={onShowAdd} title="Map to domain">+</button>
+                    <button className="act-btn act-add" onClick={() => onShowAddPort(p.port)} title="Map to domain">+</button>
                   </div>
                 </div>
               </div>
@@ -209,28 +215,45 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
   );
 }
 
-function AddDomainModal({ defaultTLD, autoHTTPS, onAdd, onClose }: {
-  defaultTLD: string; autoHTTPS: boolean; onAdd: (domain: string, port: number, https: boolean) => void; onClose: () => void;
+function AddDomainModal({ defaultTLD, autoHTTPS, prefillPort, onAdd, onClose }: {
+  defaultTLD: string; autoHTTPS: boolean; prefillPort: number | null;
+  onAdd: (domain: string, port: number, https: boolean) => void; onClose: () => void;
 }) {
   const [name, setName] = useState('');
-  const [port, setPort] = useState('3000');
+  const [tld, setTld] = useState(defaultTLD);
+  const [port, setPort] = useState(prefillPort ? String(prefillPort) : '3000');
   const [https, setHttps] = useState(autoHTTPS);
+  const [tldOpen, setTldOpen] = useState(false);
 
-  const domain = name.includes('.') ? name : `${name}.${defaultTLD}`;
+  const tlds = ['test', 'local', 'localhost', 'dev', 'internal'];
+  const domain = name.includes('.') ? name : `${name}.${tld}`;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>Add Domain</h3>
+        <h3>{prefillPort ? `Map Port ${prefillPort}` : 'Add Domain'}</h3>
         <div className="form-group">
           <label>Domain name</label>
-          <input type="text" placeholder={`myapp.${defaultTLD}`} value={name} onChange={e => setName(e.target.value)} autoFocus />
-          {name && !name.includes('.') && <span className="hint">{domain}</span>}
+          <div className="domain-input-row">
+            <input type="text" placeholder="myapp" value={name} onChange={e => setName(e.target.value)} autoFocus className="domain-name-input" />
+            <div className="tld-picker">
+              <button className="tld-btn" onClick={() => setTldOpen(!tldOpen)}>.{tld}</button>
+              {tldOpen && (
+                <div className="tld-dropdown">
+                  {tlds.map(t => (
+                    <button key={t} className={`tld-option ${t === tld ? 'active' : ''}`} onClick={() => { setTld(t); setTldOpen(false); }}>.{t}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="form-group">
-          <label>Port</label>
-          <input type="number" placeholder="3000" value={port} onChange={e => setPort(e.target.value)} />
-        </div>
+        {!prefillPort && (
+          <div className="form-group">
+            <label>Port</label>
+            <input type="number" placeholder="3000" value={port} onChange={e => setPort(e.target.value)} />
+          </div>
+        )}
         <div className="form-row">
           <span>HTTPS</span>
           <label className="toggle">
