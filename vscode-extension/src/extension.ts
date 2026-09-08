@@ -55,11 +55,20 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!portStr) { return; }
 
+      const useHttps = await vscode.window.showQuickPick(
+        [{ label: 'HTTPS', description: 'Recommended — generates a trusted local certificate', picked: true },
+         { label: 'HTTP', description: 'No encryption' }],
+        { placeHolder: 'Enable HTTPS?' }
+      );
+      if (!useHttps) { return; }
+      const https = useHttps.label === 'HTTPS';
+
       const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
       try {
-        await client.add(domain, parseInt(portStr, 10), dir, false);
-        vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${portStr}`);
+        const proto = https ? 'https' : 'http';
+        await client.add(domain, parseInt(portStr, 10), dir, https);
+        vscode.window.showInformationMessage(`Mapped ${proto}://${domain} to localhost:${portStr}`);
         sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
@@ -183,11 +192,20 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!domain) return;
 
+      const useHttps = await vscode.window.showQuickPick(
+        [{ label: 'HTTPS', description: 'Recommended' },
+         { label: 'HTTP', description: 'No encryption' }],
+        { placeHolder: 'Enable HTTPS?' }
+      );
+      if (!useHttps) return;
+      const https = useHttps.label === 'HTTPS';
+
       const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
       try {
-        await client.add(domain, port, dir, false);
-        vscode.window.showInformationMessage(`Mapped ${domain} to localhost:${port}`);
+        const proto = https ? 'https' : 'http';
+        await client.add(domain, port, dir, https);
+        vscode.window.showInformationMessage(`Mapped ${proto}://${domain} to localhost:${port}`);
         sidebarProvider.refresh();
         statusBar.update();
       } catch (err) {
@@ -223,9 +241,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
         let setupCmd: string;
         if (platform === 'darwin') {
-          setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+          setupCmd = `osascript -e 'do shell script "HATCH_DIR=${path.join(os.homedir(), '.hatch')} ${binary} setup" with prompt "Hatch needs to configure local DNS, install its background service, and set up a trusted certificate authority for HTTPS." with administrator privileges'`;
         } else if (platform === 'linux') {
-          setupCmd = `pkexec "${binary}" setup`;
+          setupCmd = `pkexec env HATCH_DIR=${path.join(os.homedir(), '.hatch')} "${binary}" setup`;
         } else {
           setupCmd = `powershell -Command "Start-Process '${binary}' -ArgumentList 'setup' -Verb RunAs -Wait"`;
         }
@@ -298,9 +316,9 @@ async function autoBootstrap(
     const { exec } = require('child_process');
     let setupCmd: string;
     if (platform === 'darwin') {
-      setupCmd = `osascript -e 'do shell script "${binary} setup" with administrator privileges'`;
+      setupCmd = `osascript -e 'do shell script "HATCH_DIR=${path.join(os.homedir(), '.hatch')} ${binary} setup" with prompt "Hatch needs to configure local DNS, install its background service, and set up a trusted certificate authority for HTTPS." with administrator privileges'`;
     } else if (platform === 'linux') {
-      setupCmd = `pkexec "${binary}" setup`;
+      setupCmd = `pkexec env HATCH_DIR=${path.join(os.homedir(), '.hatch')} "${binary}" setup`;
     } else {
       setupCmd = `powershell -Command "Start-Process '${binary}' -ArgumentList 'setup' -Verb RunAs -Wait"`;
     }

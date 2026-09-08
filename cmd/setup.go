@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/kingsleyocran/hatch/internal/config"
@@ -15,7 +16,7 @@ import (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "One-time setup (requires sudo)",
-	Long:  "Configures DNS resolver and port forwarding. Run once after install.",
+	Long:  "Configures DNS resolver and daemon service. Run once after install.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		plat := platform.Current()
 
@@ -46,17 +47,12 @@ var setupCmd = &cobra.Command{
 		}
 		fmt.Println("  ✓ DNS resolver configured")
 
-		fmt.Println("  Setting up port forwarding (80 → daemon)...")
-		if err := plat.SetupPortForward(80, cfg.DaemonPort); err != nil {
-			return fmt.Errorf("setup port forward: %w", err)
+		binary, _ := os.Executable()
+		fmt.Println("  Installing daemon service...")
+		if err := plat.InstallDaemon(binary, cfg.SocketPath()); err != nil {
+			return fmt.Errorf("install daemon: %w", err)
 		}
-		fmt.Println("  ✓ Port forwarding configured")
-
-		fmt.Println("  Setting up HTTPS port forwarding (443 → daemon)...")
-		if err := plat.SetupPortForward(443, cfg.HTTPSPort); err != nil {
-			return fmt.Errorf("setup HTTPS port forward: %w", err)
-		}
-		fmt.Println("  ✓ HTTPS port forwarding configured")
+		fmt.Println("  ✓ Daemon installed (binds port 80 directly)")
 
 		fmt.Println("  Initializing local Certificate Authority...")
 		if !htls.CAExists(config.Dir()) {
@@ -66,12 +62,19 @@ var setupCmd = &cobra.Command{
 		}
 		fmt.Println("  ✓ Local CA initialized")
 
+		fmt.Println("  Installing CA into system trust store...")
+		if err := plat.InstallCA(filepath.Join(config.Dir(), "ca-cert.pem")); err != nil {
+			fmt.Printf("  ⚠ CA trust install failed: %v\n", err)
+		} else {
+			fmt.Println("  ✓ CA trusted by system")
+		}
+
 		if err := config.Save(cfg, config.DefaultPath()); err != nil {
 			return fmt.Errorf("save config: %w", err)
 		}
 		fmt.Println("  ✓ Config saved")
 
-		fmt.Println("\n✓ Setup complete. Run 'hatch start' to begin.")
+		fmt.Println("\n✓ Setup complete. The daemon will start automatically.")
 		return nil
 	},
 }

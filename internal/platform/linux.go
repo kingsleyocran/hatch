@@ -117,3 +117,22 @@ func (l *Linux) UninstallDaemon() error {
 	exec.Command("systemctl", "--user", "daemon-reload").Run()
 	return nil
 }
+
+func (l *Linux) InstallCA(certPath string) error {
+	destDir := "/usr/local/share/ca-certificates"
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(certPath)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(destDir, "hatch-ca.crt"), data, 0644); err != nil {
+		return err
+	}
+	cmd := exec.Command("update-ca-certificates")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("update-ca-certificates: %s: %w", string(out), err)
+	}
+	return nil
+}

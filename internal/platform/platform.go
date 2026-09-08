@@ -7,5 +7,6 @@ type Platform interface {
 	TeardownPortForward(fromPort, toPort int) error
 	InstallDaemon(binaryPath, sockPath string) error
 	UninstallDaemon() error
+	InstallCA(certPath string) error
 	NeedsSudo() bool
 }
