@@ -44,6 +44,18 @@ func (m *Manager) AddRouteHTTPS(domain string, port int, https bool) {
 
 	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
 	rp := httputil.NewSingleHostReverseProxy(target)
+
+	originalDirector := rp.Director
+	rp.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Forwarded-Proto", "http")
+		if req.TLS != nil {
+			req.Header.Set("X-Forwarded-Proto", "https")
+		}
+		req.Host = target.Host
+	}
+
 	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		m.mu.RLock()
 		rt := m.routes[domain]
