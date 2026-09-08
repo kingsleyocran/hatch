@@ -165,19 +165,21 @@ function DomainsView({ domains, ports, config, daemonRunning, onRemove, onRefres
           ) : (
             domains.map(d => (
               <div className="card" key={d.domain}>
-                <div className="card-row">
-                  <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
-                  <div className="card-info">
-                    <span className="card-title">{d.domain}</span>
-                    <span className="card-sub">→ localhost:{d.port}</span>
+                <div className="card-col">
+                  <div className="card-row">
+                    <span className={`dot ${d.alive ? 'dot-green' : 'dot-red'}`} />
+                    <div className="card-info">
+                      <span className="card-title">{d.domain}</span>
+                      <span className="card-sub">{'→'} localhost:{d.port}</span>
+                    </div>
+                    <div className="card-actions">
+                      <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">{'↗'}</button>
+                      <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">{'✕'}</button>
+                    </div>
                   </div>
                   <div className="card-badges">
                     <span className={`status-label ${d.alive ? 'sl-active' : 'sl-stopped'}`}>{d.alive ? 'Active' : 'Stopped'}</span>
                     {d.https && <span className="https-badge">HTTPS</span>}
-                  </div>
-                  <div className="card-actions">
-                    <button className="act-btn" onClick={() => BrowserOpenURL(`${d.https ? 'https' : 'http'}://${d.domain}`)} title="Open">↗</button>
-                    <button className="act-btn act-danger" onClick={() => onRemove(d.domain)} title="Remove">✕</button>
                   </div>
                 </div>
               </div>

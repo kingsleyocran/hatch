@@ -454,3 +454,14 @@ body {
   border-radius: 3px;
   letter-spacing: 0.5px;
 }
+
+/* Card Column Layout */
+.card-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.card-col .card-badges {
+  padding-left: 18px;
+}
