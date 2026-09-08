@@ -245,7 +245,11 @@ export class HatchSidebarProvider implements vscode.WebviewViewProvider {
       </div>
     </div>
     <div class="card-list">
-      ${domainItems || '<div class="empty">No domains mapped yet. Click + to add one.</div>'}
+      ${domainItems || `<div class="empty-state">
+            <div class="empty-logo"><svg viewBox="0 0 117.1 107.32" width="40" height="36"><path fill="#B3D7FC" opacity="0.3" d="M83.92 84.85l5.77 0c3.45,0 5.94,2.82 5.54,6.27l-0.58 5.01c-0.72,6.18 3.71,11.19 9.88,11.19 6.18,0 11.77,-5.01 12.49,-11.19 0.72,-6.18 -3.71,-11.19 -9.88,-11.19l-5.12 0c-3.45,0 -5.94,-2.82 -5.54,-6.27l0.59 -5.04 0.11 -0.93 4.54 -39.02c0.71,-6.14 -4.11,-11.17 -10.74,-11.23 -0.13,0.01 -0.26,0.01 -0.39,0.01l-4.49 0 -5.55 0c-3.45,0 -5.94,-2.82 -5.54,-6.27l0.58 -5.01c0.72,-6.18 -3.71,-11.19 -9.88,-11.19 -6.18,0 -11.77,5.01 -12.49,11.19 -0.72,6.18 3.71,11.19 9.88,11.19l5.12 0c3.45,0 5.94,2.82 5.54,6.27l-0.59 5.04c-0,0 -0,0.01 -0,0.01l-0.11 0.92 -1.88 16.2c-0.64,-5.61 -5.17,-9.79 -11.17,-9.79 -5.99,0 -11.48,4.16 -13.44,9.75l1.99 -17.09c0.71,-6.14 -4.11,-11.17 -10.74,-11.23 -0.13,0.01 -0.26,0.01 -0.39,0.01l-4.49 0 -5.55 0c-3.45,0 -5.94,-2.82 -5.54,-6.27l0.58 -5.01c0.72,-6.18 -3.71,-11.19 -9.88,-11.19 -6.18,0 -11.77,5.01 -12.49,11.19 -0.72,6.18 3.71,11.19 9.88,11.19l5.12 0c3.45,0 5.94,2.82 5.54,6.27l-0.59 5.04c-0,0 -0,0.01 -0,0.01l-0.11 0.92 -4.54 39.01c-0.72,6.18 4.17,11.23 10.86,11.23l0.04 0c0.08,-0 0.15,-0 0.23,-0l4.26 0 0.01 -0 5.77 0c3.45,0 5.94,2.82 5.54,6.27l-0.58 5.01c-0.72,6.18 3.71,11.19 9.88,11.19 6.18,0 11.77,-5.01 12.49,-11.19 0.72,-6.18 -3.71,-11.19 -9.88,-11.19l-5.12 0c-3.45,0 -5.94,-2.82 -5.54,-6.27l0.59 -5.04c0,-0.01 0,-0.01 0,-0.02l0.11 -0.92 1.88 -16.18c0.65,5.59 5.18,9.75 11.17,9.75 6,0 11.5,-4.18 13.45,-9.78l-1.99 17.12c-0.72,6.18 4.17,11.23 10.86,11.23l0.04 0c0.08,-0 0.15,-0 0.23,-0l4.26 0 0.01 -0z"/></svg></div>
+            <div class="empty-text">No domains mapped yet.</div>
+            <button class="empty-btn" onclick="post('addDomain')">+ Add your first domain</button>
+          </div>`}
     </div>
   </div>
 
@@ -438,6 +442,34 @@ export class HatchSidebarProvider implements vscode.WebviewViewProvider {
         color: var(--vscode-descriptionForeground);
         text-align: center;
       }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 20px;
+        text-align: center;
+      }
+      .empty-logo {
+        margin-bottom: 16px;
+      }
+      .empty-text {
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: 16px;
+      }
+      .empty-btn {
+        padding: 6px 16px;
+        background: none;
+        color: var(--vscode-foreground);
+        border: 1px solid var(--vscode-widget-border, rgba(255,255,255,0.12));
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: var(--vscode-font-family);
+        transition: background 0.15s;
+      }
+      .empty-btn:hover { background: var(--vscode-toolbar-hoverBackground); }
     `;
   }
 
