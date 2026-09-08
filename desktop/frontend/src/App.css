@@ -381,7 +381,6 @@ body {
   gap: 0;
   border: 1px solid #2a3a5c;
   border-radius: 6px;
-  overflow: hidden;
   background: #0A1628;
 }
 .domain-name-input {
@@ -406,7 +405,7 @@ body {
 .tld-btn:hover { background: #223456; }
 .tld-dropdown {
   position: absolute;
-  bottom: 100%;
+  top: 100%;
   right: 0;
   background: #0f1d32;
   border: 1px solid #2a3a5c;
@@ -414,7 +413,7 @@ body {
   overflow: hidden;
   z-index: 10;
   min-width: 100px;
-  margin-bottom: 4px;
+  margin-top: 4px;
 }
 .tld-option {
   display: block;
