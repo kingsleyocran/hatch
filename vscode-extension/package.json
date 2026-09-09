@@ -2,7 +2,7 @@
   "name": "hatch-vs",
   "displayName": "Hatch VSCode",
   "description": "Map local domains to your running apps",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "kocranbuild",
   "license": "MIT",
   "repository": {
