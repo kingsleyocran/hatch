@@ -211,7 +211,15 @@ func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 
 	ctx := r.Context()
 	upstreamURL := fmt.Sprintf("ws://127.0.0.1:%d%s", port, r.URL.RequestURI())
-	upstreamConn, _, err := websocket.Dial(ctx, upstreamURL, nil)
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		origin = fmt.Sprintf("http://127.0.0.1:%d", port)
+	}
+	upstreamConn, _, err := websocket.Dial(ctx, upstreamURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{
+			"Origin": []string{origin},
+		},
+	})
 	if err != nil {
 		clientConn.Close(websocket.StatusBadGateway, "upstream unavailable")
 		return
