@@ -1,4 +1,3 @@
-# .github/workflows/release.yml
 name: Release
 
 on:
@@ -10,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  cli-binaries:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +20,7 @@ jobs:
         with:
           go-version: '1.26'
 
-      - name: Build binaries
+      - name: Build CLI binaries
         run: |
           mkdir -p dist
           GOOS=darwin GOARCH=arm64 go build -o dist/hatch-darwin-arm64 .
@@ -29,6 +28,98 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -o dist/hatch-linux-amd64 .
           GOOS=linux GOARCH=arm64 go build -o dist/hatch-linux-arm64 .
           GOOS=windows GOARCH=amd64 go build -o dist/hatch-windows-amd64.exe .
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-binaries
+          path: dist/*
+
+  desktop-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails and dependencies
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Build desktop app
+        run: |
+          cd desktop
+          cd frontend && npm install && cd ..
+          wails build
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp desktop/build/bin/desktop dist/hatch-desktop-linux-amd64
+          chmod +x dist/hatch-desktop-linux-amd64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: dist/*
+
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build desktop app
+        run: |
+          cd desktop
+          cd frontend && npm install && cd ..
+          wails build
+
+      - name: Package
+        run: |
+          mkdir dist
+          copy desktop\build\bin\desktop.exe dist\hatch-desktop-windows-amd64.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: dist/*
+
+  create-release:
+    needs: [cli-binaries, desktop-linux, desktop-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect binaries
+        run: |
+          mkdir -p dist
+          cp artifacts/cli-binaries/* dist/
+          cp artifacts/desktop-linux/* dist/
+          cp artifacts/desktop-windows/* dist/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
