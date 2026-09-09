@@ -48,11 +48,21 @@ var setupCmd = &cobra.Command{
 		fmt.Println("  ✓ DNS resolver configured")
 
 		binary, _ := os.Executable()
+
+		if runtime.GOOS == "linux" {
+			fmt.Println("  Granting port 80/443 binding capability...")
+			if out, err := exec.Command("setcap", "cap_net_bind_service=+ep", binary).CombinedOutput(); err != nil {
+				fmt.Printf("  ⚠ setcap failed: %s (ports 80/443 may not work)\n", string(out))
+			} else {
+				fmt.Println("  ✓ Port binding capability granted")
+			}
+		}
+
 		fmt.Println("  Installing daemon service...")
 		if err := plat.InstallDaemon(binary, cfg.SocketPath()); err != nil {
 			return fmt.Errorf("install daemon: %w", err)
 		}
-		fmt.Println("  ✓ Daemon installed (binds port 80 directly)")
+		fmt.Println("  ✓ Daemon service installed")
 
 		fmt.Println("  Initializing local Certificate Authority...")
 		if !htls.CAExists(config.Dir()) {

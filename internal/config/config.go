@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"gopkg.in/yaml.v3"
 )
@@ -46,7 +47,14 @@ func DefaultPath() string {
 }
 
 func (c *Config) SocketPath() string {
+	if runtime.GOOS == "windows" {
+		return "127.0.0.1:19876"
+	}
 	return filepath.Join(Dir(), "hatch.sock")
+}
+
+func IsWindows() bool {
+	return runtime.GOOS == "windows"
 }
 
 func Load(path string) (*Config, error) {
