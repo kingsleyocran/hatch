@@ -67,7 +67,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp desktop/build/bin/desktop dist/hatch-desktop-linux-amd64
+          cp desktop/build/bin/hatch-desktop dist/hatch-desktop-linux-amd64
           chmod +x dist/hatch-desktop-linux-amd64
 
       - name: Upload artifact
@@ -101,7 +101,7 @@ jobs:
       - name: Package
         run: |
           mkdir dist
-          copy desktop\build\bin\desktop.exe dist\hatch-desktop-windows-amd64.exe
+          copy desktop\build\bin\hatch-desktop.exe dist\hatch-desktop-windows-amd64.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
