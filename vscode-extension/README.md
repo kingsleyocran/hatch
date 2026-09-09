@@ -4,9 +4,11 @@
 
 Stop juggling `localhost:3000`. Use `myapp.test` instead — with HTTPS, auto-detection, and zero config.
 
-![Hatch Sidebar](https://raw.githubusercontent.com/kingsleyocran/hatch/production/vscode-extension/assets/screenshot-1.png)
-
-![Hatch Dashboard](https://raw.githubusercontent.com/kingsleyocran/hatch/production/vscode-extension/assets/screenshot-2.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kingsleyocran/hatch/production/vscode-extension/assets/screenshot-1.png" width="280" alt="Hatch Sidebar">
+  &nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/kingsleyocran/hatch/production/vscode-extension/assets/screenshot-2.png" width="280" alt="Hatch Dashboard">
+</p>
 
 ## Features
 
