@@ -15,14 +15,14 @@ Stop juggling `localhost:3000`. Map custom domains like `myapp.test` to your run
 ### Hero Visual
 Terminal showing:
 ```
-$ hatch add cayacart.test 3000 --https
-✓ cayacart.test → localhost:3000 (https)
+$ hatch add webapp.test 3000 --https
+✓ webapp.test → localhost:3000 (https)
 
 $ hatch ls
   DOMAIN            PORT   STATUS    HTTPS
-  cayacart.test     3000   ● active  ✓
-  phamel.test       8000   ● active  ✓
-  orborbit.test     5173   ● active  ✓
+  webapp.test     3000   ● active  ✓
+  backend.test       8000   ● active  ✓
+  dashboard.test     5173   ● active  ✓
 ```
 
 ---
@@ -79,7 +79,7 @@ Visit `https://myapp.test` — it just works.
 ### Core Features (grid layout)
 
 **Custom Local Domains**
-Map `cayacart.test`, `phamel.test`, `api.test` — any name to any port. Your browser tabs finally make sense.
+Map `webapp.test`, `backend.test`, `api.test` — any name to any port. Your browser tabs finally make sense.
 
 **Instant HTTPS**
 Generates trusted TLS certificates automatically. Green lock in your browser. No more self-signed cert warnings.
@@ -144,7 +144,7 @@ Browser → Hatch Proxy (port 80/443) → localhost:3000
 Hatch runs a lightweight DNS server. Your OS is configured to ask Hatch for `.test` domains. Every registered domain resolves to `127.0.0.1` — instantly, no `/etc/hosts` editing.
 
 **Reverse Proxy**
-Hatch is a Go reverse proxy that routes requests by domain name. `cayacart.test` goes to port 3000. `phamel.test` goes to port 8000. TLS termination happens at the proxy — your dev servers stay on plain HTTP.
+Hatch is a Go reverse proxy that routes requests by domain name. `webapp.test` goes to port 3000. `backend.test` goes to port 8000. TLS termination happens at the proxy — your dev servers stay on plain HTTP.
 
 **Port Watcher**
 Hatch monitors registered ports. When your dev server starts, the domain goes live. When it stops, visitors see a branded "waiting" page that auto-refreshes via WebSocket when the server comes back.

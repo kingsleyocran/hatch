@@ -24,18 +24,18 @@ Running multiple projects locally means juggling `localhost:3000`, `localhost:30
 ## The Solution
 
 ```bash
-hatch add cayacart.test 3000 --https
-hatch add phamel.test 8000 --https
-hatch add orborbit.test 5173
+hatch add webapp.test 3000 --https
+hatch add backend.test 8000 --https
+hatch add dashboard.test 5173
 
 hatch ls
   DOMAIN            PORT   STATUS    HTTPS
-  cayacart.test     3000   ● active  ✓
-  phamel.test       8000   ● active  ✓
-  orborbit.test     5173   ● active
+  webapp.test     3000   ● active  ✓
+  backend.test       8000   ● active  ✓
+  dashboard.test     5173   ● active
 ```
 
-Visit `https://cayacart.test` — it just works. Green lock. No warnings.
+Visit `https://webapp.test` — it just works. Green lock. No warnings.
 
 ## Features
 
