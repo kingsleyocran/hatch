@@ -183,22 +183,13 @@ func (d *Darwin) UninstallDaemon() error {
 }
 
 func (d *Darwin) InstallCA(certPath string) error {
-	home := os.Getenv("HOME")
-	if hatchDir := os.Getenv("HATCH_DIR"); hatchDir != "" {
-		home = filepath.Dir(hatchDir)
-	}
-	loginKeychain := filepath.Join(home, "Library", "Keychains", "login.keychain-db")
-
 	exec.Command("security", "remove-trusted-cert", "-d", certPath).CombinedOutput()
 
 	cmd := exec.Command("security", "add-trusted-cert", "-d", "-r", "trustRoot",
-		"-p", "ssl", "-k", loginKeychain, certPath)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		cmd2 := exec.Command("security", "add-trusted-cert", "-r", "trustRoot",
-			"-p", "ssl", "-k", loginKeychain, certPath)
-		if out2, err2 := cmd2.CombinedOutput(); err2 != nil {
-			return fmt.Errorf("security add-trusted-cert: %s / %s: %w", string(out), string(out2), err2)
-		}
+		"-p", "ssl", "-k", "/Library/Keychains/System.keychain", certPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("security add-trusted-cert: %s: %w", string(out), err)
 	}
 	return nil
 }
