@@ -202,12 +202,14 @@ func isWebSocketUpgrade(r *http.Request) bool {
 
 func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 	clientConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify:   true,
+		CompressionMode:      websocket.CompressionDisabled,
 	})
 	if err != nil {
 		return
 	}
 	defer clientConn.CloseNow()
+	clientConn.SetReadLimit(10 * 1024 * 1024)
 
 	ctx := r.Context()
 	upstreamURL := fmt.Sprintf("ws://127.0.0.1:%d%s", port, r.URL.RequestURI())
@@ -219,12 +221,14 @@ func proxyWebSocket(w http.ResponseWriter, r *http.Request, port int) {
 		HTTPHeader: http.Header{
 			"Origin": []string{origin},
 		},
+		CompressionMode: websocket.CompressionDisabled,
 	})
 	if err != nil {
 		clientConn.Close(websocket.StatusBadGateway, "upstream unavailable")
 		return
 	}
 	defer upstreamConn.CloseNow()
+	upstreamConn.SetReadLimit(10 * 1024 * 1024)
 
 	done := make(chan struct{}, 2)
 
