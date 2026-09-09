@@ -4,6 +4,10 @@
 
 Stop juggling `localhost:3000`. Use `myapp.test` instead — with HTTPS, auto-detection, and zero config.
 
+![Hatch Sidebar](assets/screenshot-1.png)
+
+![Hatch Dashboard](assets/screenshot-2.png)
+
 ## Features
 
 ### Domain Management
