@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/kingsleyocran/hatch/internal/config"
 )
 
 type Server struct {
@@ -25,17 +27,24 @@ func NewServer(d *Daemon, sockPath string) *Server {
 }
 
 func (s *Server) Start() error {
-	os.Remove(s.sockPath)
+	var ln net.Listener
+	var err error
 
-	if err := os.MkdirAll(filepath.Dir(s.sockPath), 0755); err != nil {
-		return err
+	if config.IsWindows() {
+		ln, err = net.Listen("tcp", s.sockPath)
+	} else {
+		os.Remove(s.sockPath)
+		if mkErr := os.MkdirAll(filepath.Dir(s.sockPath), 0755); mkErr != nil {
+			return mkErr
+		}
+		ln, err = net.Listen("unix", s.sockPath)
+		if err == nil {
+			os.Chmod(s.sockPath, 0666)
+		}
 	}
-
-	ln, err := net.Listen("unix", s.sockPath)
 	if err != nil {
 		return err
 	}
-	os.Chmod(s.sockPath, 0666)
 	s.listener = ln
 
 	s.wg.Add(1)

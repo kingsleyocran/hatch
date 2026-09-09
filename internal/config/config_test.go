@@ -11,8 +11,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.DefaultTLD != "test" {
 		t.Errorf("DefaultTLD = %q, want %q", cfg.DefaultTLD, "test")
 	}
-	if cfg.DaemonPort != 8443 {
-		t.Errorf("DaemonPort = %d, want %d", cfg.DaemonPort, 8443)
+	if cfg.DaemonPort != 80 {
+		t.Errorf("DaemonPort = %d, want %d", cfg.DaemonPort, 80)
 	}
 	if cfg.DNSPort != 15353 {
 		t.Errorf("DNSPort = %d, want %d", cfg.DNSPort, 15353)

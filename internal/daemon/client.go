@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+
+	"github.com/kingsleyocran/hatch/internal/config"
 )
 
 type Client struct {
@@ -16,7 +18,11 @@ func NewClient(sockPath string) *Client {
 }
 
 func (c *Client) send(req Request) (*Response, error) {
-	conn, err := net.Dial("unix", c.sockPath)
+	network := "unix"
+	if config.IsWindows() {
+		network = "tcp"
+	}
+	conn, err := net.Dial(network, c.sockPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to daemon (is it running?): %w", err)
 	}

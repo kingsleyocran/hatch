@@ -75,46 +75,50 @@ func (l *Linux) TeardownPortForward(fromPort, toPort int) error {
 }
 
 func (l *Linux) systemdUnit(binaryPath, sockPath string) string {
+	hatchDir := filepath.Dir(sockPath)
 	return fmt.Sprintf(`[Unit]
-Description=hatch.service - Hatch Local Domain Manager
+Description=Hatch Local Domain Manager
 After=network.target
 
 [Service]
 Type=simple
+Environment=HATCH_DIR=%s
 ExecStart=%s start --foreground
 Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=default.target
-`, binaryPath)
+WantedBy=multi-user.target
+`, hatchDir, binaryPath)
 }
 
 func (l *Linux) InstallDaemon(binaryPath, sockPath string) error {
-	unitDir := filepath.Join(os.Getenv("HOME"), ".config", "systemd", "user")
-	if err := os.MkdirAll(unitDir, 0755); err != nil {
-		return err
-	}
+	exec.Command("systemctl", "stop", "hatch.service").Run()
+	exec.Command("systemctl", "--user", "disable", "--now", "hatch.service").Run()
+	os.Remove(filepath.Join(os.Getenv("HOME"), ".config", "systemd", "user", "hatch.service"))
 
-	unitPath := filepath.Join(unitDir, "hatch.service")
+	unitPath := "/etc/systemd/system/hatch.service"
 	content := l.systemdUnit(binaryPath, sockPath)
 	if err := os.WriteFile(unitPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("write unit: %w", err)
 	}
 
-	exec.Command("systemctl", "--user", "daemon-reload").Run()
-	cmd := exec.Command("systemctl", "--user", "enable", "--now", "hatch.service")
+	exec.Command("systemctl", "daemon-reload").Run()
+	cmd := exec.Command("systemctl", "enable", "--now", "hatch.service")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("enable service: %s: %w", string(out), err)
+	}
+
+	if hatchDir := filepath.Dir(sockPath); hatchDir != "" {
+		os.Chmod(filepath.Join(hatchDir, "hatch.sock"), 0666)
 	}
 	return nil
 }
 
 func (l *Linux) UninstallDaemon() error {
-	exec.Command("systemctl", "--user", "disable", "--now", "hatch.service").Run()
-	unitPath := filepath.Join(os.Getenv("HOME"), ".config", "systemd", "user", "hatch.service")
-	os.Remove(unitPath)
-	exec.Command("systemctl", "--user", "daemon-reload").Run()
+	exec.Command("systemctl", "disable", "--now", "hatch.service").Run()
+	os.Remove("/etc/systemd/system/hatch.service")
+	exec.Command("systemctl", "daemon-reload").Run()
 	return nil
 }
 
