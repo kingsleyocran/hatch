@@ -247,6 +247,51 @@ ext install kingsleyocran.hatch
 
 ---
 
+## Desktop App Download Page
+
+### Headline
+**Download Hatch Desktop**
+
+### Subheadline
+Manage your local domains visually. Dashboard, settings, port scanning — all in one app.
+
+### Download Cards
+
+**Windows**
+Download `hatch-desktop-windows-amd64.exe` from GitHub Releases.
+Button: **Download for Windows** →
+
+**Linux**
+Download `hatch-desktop-linux-amd64` from GitHub Releases.
+Button: **Download for Linux** →
+
+**macOS**
+Coming soon. macOS desktop app requires Apple Developer Program signing for a smooth install experience. Use the CLI or VSCode extension in the meantime.
+Button: **Use CLI Instead** → (links to installation section)
+
+### Important Notice (shown after clicking download)
+
+**Before you run the app:**
+
+The Hatch desktop app is open source but not yet code-signed. Your operating system may show a security warning when you first run it. This is normal for open-source software.
+
+**Windows:**
+1. Download `hatch-desktop-windows-amd64.exe`
+2. Windows SmartScreen may say "Windows protected your PC"
+3. Click **"More info"** then **"Run anyway"**
+4. This only happens once — subsequent launches work normally
+
+**Linux:**
+1. Download `hatch-desktop-linux-amd64`
+2. Make it executable: `chmod +x hatch-desktop-linux-amd64`
+3. Run: `./hatch-desktop-linux-amd64`
+4. No security warnings on Linux
+
+**Why isn't it signed?**
+Code signing certificates cost $200-400/year. As an open-source project, we prioritize features over certificates. The app is fully open source — you can inspect every line of code on [GitHub](https://github.com/kingsleyocran/hatch).
+
+---
+
 ## Quick Start Section
 
 ### Headline
