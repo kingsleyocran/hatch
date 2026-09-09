@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -66,15 +68,15 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) socketPath() string {
-	if v := os.Getenv("HATCH_DIR"); v != "" {
-		return filepath.Join(v, "hatch.sock")
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".hatch", "hatch.sock")
+	return config.Default().SocketPath()
 }
 
 func (a *App) send(req request) (*response, error) {
-	conn, err := net.DialTimeout("unix", a.socketPath(), 5*time.Second)
+	network := "unix"
+	if runtime.GOOS == "windows" {
+		network = "tcp"
+	}
+	conn, err := net.DialTimeout(network, a.socketPath(), 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +166,47 @@ type PortInfo struct {
 }
 
 func (a *App) ScanPorts() []PortInfo {
+	if runtime.GOOS == "windows" {
+		return a.scanPortsWindows()
+	}
+	return a.scanPortsUnix()
+}
+
+func (a *App) scanPortsWindows() []PortInfo {
+	out, err := exec.Command("netstat", "-ano", "-p", "TCP").Output()
+	if err != nil {
+		return []PortInfo{}
+	}
+
+	mapped := make(map[int]bool)
+	for _, d := range a.GetDomains() {
+		mapped[d.Port] = true
+	}
+
+	var ports []PortInfo
+	seen := make(map[int]bool)
+	for _, line := range strings.Split(string(out), "\n") {
+		if !strings.Contains(line, "LISTENING") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		addr := fields[1]
+		if idx := strings.LastIndex(addr, ":"); idx >= 0 {
+			port, _ := strconv.Atoi(addr[idx+1:])
+			if port > 0 && !mapped[port] && !seen[port] && port != 80 && port != 443 && port != 15353 && port != 19876 {
+				seen[port] = true
+				ports = append(ports, PortInfo{Port: port, Name: fmt.Sprintf("pid:%s", fields[len(fields)-1]), Process: ""})
+			}
+		}
+	}
+	sort.Slice(ports, func(i, j int) bool { return ports[i].Port < ports[j].Port })
+	return ports
+}
+
+func (a *App) scanPortsUnix() []PortInfo {
 	out, err := exec.Command("lsof", "-iTCP", "-sTCP:LISTEN", "-n", "-P", "-F", "pcn").Output()
 	if err != nil {
 		return []PortInfo{}
@@ -258,22 +301,43 @@ func (a *App) IsDaemonRunning() bool {
 }
 
 func (a *App) StartDaemon() string {
-	binary := filepath.Join(os.Getenv("HOME"), ".hatch", "bin", "hatch")
-	plist := "/Library/LaunchDaemons/com.hatch.daemon.plist"
+	home, _ := os.UserHomeDir()
+	binary := filepath.Join(home, ".hatch", "bin", "hatch")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 
-	if _, err := os.Stat(plist); err == nil {
-		cmd := exec.Command("osascript", "-e",
-			`do shell script "launchctl unload /Library/LaunchDaemons/com.hatch.daemon.plist 2>/dev/null; launchctl load /Library/LaunchDaemons/com.hatch.daemon.plist" with prompt "Hatch needs to start the daemon." with administrator privileges`)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return string(out)
+	switch runtime.GOOS {
+	case "darwin":
+		plist := "/Library/LaunchDaemons/com.hatch.daemon.plist"
+		if _, err := os.Stat(plist); err == nil {
+			cmd := exec.Command("osascript", "-e",
+				`do shell script "launchctl unload /Library/LaunchDaemons/com.hatch.daemon.plist 2>/dev/null; launchctl load /Library/LaunchDaemons/com.hatch.daemon.plist" with prompt "Hatch needs to start the daemon." with administrator privileges`)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return string(out)
+			}
+			return ""
 		}
-		return ""
+
+	case "linux":
+		cmd := exec.Command("pkexec", "systemctl", "start", "hatch.service")
+		if out, err := cmd.CombinedOutput(); err == nil {
+			return ""
+		} else {
+			_ = out
+		}
+
+	case "windows":
+		cmd := exec.Command("schtasks", "/run", "/tn", "HatchDaemon")
+		if out, err := cmd.CombinedOutput(); err == nil {
+			return ""
+		} else {
+			_ = out
+		}
 	}
 
 	cmd := exec.Command(binary, "start")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
+	if out, err := cmd.CombinedOutput(); err != nil {
 		return string(out)
 	}
 	return ""
